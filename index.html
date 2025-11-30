@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gaol Tactician (Editor)</title>
     <style>
-        /* スタイルは共通ですが、編集機能に必要なものだけ残しています */
         :root {
             --primary: #007bff; --success: #28a745; --info: #17a2b8; --danger: #dc3545;
             --master-bg: #fff3cd; --master-border: #ffc107; --lv99-bg: #e2e6ea; --lv99-border: #adb5bd;
@@ -96,7 +95,7 @@
             <h4 style="margin:0 0 5px 0;">共有用URL発行</h4>
             <div style="font-size:0.8rem; color:#666;">
                 閲覧専用ページ(viewer.html)のリンクを作成します。<br>
-                メンバーリスト全体は含まれず、このボードの6人分のデータのみが含まれます。
+                ※名前と配置だけを共有するためURLが短くなります。
             </div>
             <div class="share-input-group">
                 <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
@@ -113,7 +112,6 @@
     </div>
 
 <script>
-    // --- データ定数 ---
     const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
     const JOB_FULLNAMES = {'戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ','ナ':'ナイト','暗':'暗黒','獣':'獣使','吟':'吟遊','狩':'狩人','侍':'侍','忍':'忍者','竜':'竜騎','召':'召喚','青':'青魔','コ':'コル','か':'から','踊':'踊り','学':'学者','風':'風水','剣':'剣'};
     const BOSS_DATA = [
@@ -401,34 +399,39 @@
         }
     }
 
-    // --- URL Generation (To viewer.html) ---
+    // --- URL Generation (Optimized) ---
+    function utf8_to_b64(str) {
+        return window.btoa(unescape(encodeURIComponent(str)));
+    }
+
     function generateShareUrl() {
         const boss1 = document.getElementById('boss-1')?.value;
         const boss2 = document.getElementById('boss-2')?.value;
         const boss3 = document.getElementById('boss-3')?.value;
 
-        // 6行分のデータ抽出
+        // 【軽量化】名前と配置(配列)のみを抽出。マスター情報は送らない。
         const rows = [];
         for(let r=0; r<6; r++) {
             const pIdx = selectedPlayerIndices[r];
             const player = (pIdx !== -1) ? members[pIdx] : null;
+            
             if(player) {
-                rows.push({
-                    n: player.name,
-                    m: player.masterJobs,
-                    l: player.lv99Jobs,
-                    s: boardState[r] 
-                });
+                // ["Taro", "戦", "白", "吟"] という形式の配列を作る
+                const rowData = [player.name, boardState[r][0], boardState[r][1], boardState[r][2]];
+                rows.push(rowData);
             } else {
                 rows.push(null);
             }
         }
-        const dataObj = { bo: [boss1, boss2, boss3], r: rows };
-        const jsonStr = JSON.stringify(dataObj);
-        const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
         
-        // 自分のURLから viewer.html へのパスを作る
-        // 例: https://user.github.io/repo/index.html -> https://user.github.io/repo/viewer.html
+        // データ構造: { b: [Boss1, Boss2, Boss3], r: [Rows...] }
+        const dataObj = { b: [boss1, boss2, boss3], r: rows };
+        const jsonStr = JSON.stringify(dataObj);
+        
+        // 日本語対応Base64エンコード
+        const base64 = utf8_to_b64(jsonStr);
+        
+        // viewer.htmlへのパスを生成
         const currentPath = window.location.pathname;
         const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
         const viewerUrl = window.location.protocol + "//" + window.location.host + dir + "/viewer.html?s=" + base64;
