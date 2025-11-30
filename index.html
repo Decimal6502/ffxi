@@ -265,16 +265,73 @@
     }
     function autoFillBoard() {
         if(!confirm("空いている枠を自動で埋めますか？")) return;
-        const usedJobs = new Set(); boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
-        const emptySlots = []; for(let r=0; r<6; r++) { if(selectedPlayerIndices[r] === -1) continue; for(let c=0; c<3; c++) { if(!boardState[r][c]) emptySlots.push({r, c}); } }
-        for (let i = emptySlots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [emptySlots[i], emptySlots[j]] = [emptySlots[j], emptySlots[i]]; }
-        emptySlots.forEach(slot => {
-            const player = members[selectedPlayerIndices[slot.r]];
-            const validMaster = player.masterJobs.filter(j => !usedJobs.has(j)); const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
-            let pick = (validMaster.length > 0) ? validMaster[Math.floor(Math.random() * validMaster.length)] : (validLv99.length > 0 ? validLv99[Math.floor(Math.random() * validLv99.length)] : null);
-            if (pick) { boardState[slot.r][slot.c] = pick; usedJobs.add(pick); }
-        });
-        saveBoardState(); refreshBoard();
+
+        // 1. 現在、盤面で使用済みのジョブを特定
+        const usedJobs = new Set();
+        boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
+
+        // 2. 空いているスロットを全てリストアップ
+        let emptySlots = [];
+        for(let r=0; r<6; r++) {
+            if(selectedPlayerIndices[r] === -1) continue; // プレイヤー未選択の行は無視
+            for(let c=0; c<3; c++) {
+                if(!boardState[r][c]) emptySlots.push({r, c});
+            }
+        }
+
+        // 3. 全ての空きスロットが埋まるか、候補がなくなるまでループ
+        while(emptySlots.length > 0) {
+            
+            // 各スロットについて、「現時点で選択可能なジョブ」を計算
+            const slotsWithCandidates = emptySlots.map(slot => {
+                const player = members[selectedPlayerIndices[slot.r]];
+                
+                // マスターとLv99の両方から、まだ使われていない(usedJobsにない)ものを抽出
+                const validMaster = player.masterJobs.filter(j => !usedJobs.has(j));
+                const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
+                
+                // 候補の総数（優先度判定用）と、具体的な候補リスト
+                const totalCount = validMaster.length + validLv99.length;
+                
+                return { 
+                    ...slot, 
+                    validMaster, 
+                    validLv99, 
+                    totalCount 
+                };
+            });
+
+            // 候補が少ない順に並べ替え（昇順）
+            // これにより「あと1つしか選べない！」という人が先頭に来ます
+            slotsWithCandidates.sort((a, b) => a.totalCount - b.totalCount);
+
+            // 最も切羽詰まっているスロットを取得
+            const target = slotsWithCandidates[0];
+
+            if (target.totalCount === 0) {
+                // 候補が0個なら、もう埋められないのでリストから外して次へ（手詰まり回避）
+                emptySlots = emptySlots.filter(s => !(s.r === target.r && s.c === target.c));
+                continue;
+            }
+
+            // 候補の中からジョブを決定（マスター優先、その中でランダム）
+            let pick = null;
+            if (target.validMaster.length > 0) {
+                pick = target.validMaster[Math.floor(Math.random() * target.validMaster.length)];
+            } else {
+                pick = target.validLv99[Math.floor(Math.random() * target.validLv99.length)];
+            }
+
+            // 決定したジョブを盤面にセットし、使用済みリストに追加
+            boardState[target.r][target.c] = pick;
+            usedJobs.add(pick);
+
+            // 埋めたスロットをリストから除外
+            emptySlots = emptySlots.filter(s => !(s.r === target.r && s.c === target.c));
+        }
+
+        saveBoardState();
+        refreshBoard();
     }
 
     // --- Modern URL Encoding Logic (Standard & URL Safe) ---
