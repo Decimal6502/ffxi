@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gaol Tactician Zeta</title>
+    <title>Gaol Tactician Eta</title>
     <style>
         :root {
             --primary: #007bff;
+            --success: #28a745;
+            --info: #17a2b8;
             --master-bg: #fff3cd; --master-border: #ffc107;
             --lv99-bg: #e2e6ea;   --lv99-border: #adb5bd;
             --bg: #f4f4f9; --border: #ddd;
         }
-        body { font-family: sans-serif; margin: 0; padding: 0; background: var(--bg); touch-action: manipulation; padding-bottom: 200px; }
+        body { font-family: sans-serif; margin: 0; padding: 0; background: var(--bg); touch-action: manipulation; padding-bottom: 250px; }
         
         /* タブ */
         .tabs { display: flex; background: #333; color: white; position: sticky; top: 0; z-index: 1000; }
@@ -21,6 +23,13 @@
         .content { display: none; padding: 10px; max-width: 800px; margin: 0 auto; }
         .content.active { display: block; }
         
+        /* ボタン共通 */
+        .btn-action { padding: 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; color: white; text-align: center;}
+        .btn-add { background: var(--success); width: 100%; margin-top: 10px; font-size: 16px; }
+        .btn-auto { background: var(--info); width: 100%; margin-bottom: 15px; font-size: 1rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .btn-copy { background: #6c757d; width: 80px; margin-left: 5px;}
+        .del-row { background: #dc3545; height: 100%; padding: 0 15px; }
+
         /* 設定画面 */
         .member-row { 
             background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border);
@@ -29,9 +38,6 @@
         .inputs-col { display: flex; flex-direction: column; gap: 5px; }
         .member-row input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box;}
         .job-label { font-size: 0.7rem; color: #666; margin-bottom: 1px; }
-        .btn-action { padding: 8px; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-add { background: #28a745; color: white; width: 100%; margin-top: 10px; padding: 12px; font-size: 16px; }
-        .del-row { background: #dc3545; color: white; height: 100%; }
 
         /* 作戦ボード */
         .boss-header { 
@@ -67,6 +73,13 @@
         .job-slot.target-lv99 { background-color: var(--lv99-bg); border: 2px solid var(--lv99-border); }
         .job-slot.has-job { background-color: #fff; border: 2px solid #555; color: #333; }
         .slot-mark-master { position: absolute; top: 0; right: 2px; color: #ffc107; font-size: 0.7rem; }
+
+        /* 共有エリア */
+        .share-area {
+            margin-top: 30px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ccc;
+        }
+        .share-input-group { display: flex; gap: 5px; margin-top: 5px; }
+        .share-url-box { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; color: #555; }
 
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
@@ -115,6 +128,8 @@
     </div>
 
     <div id="board" class="content active">
+        <button class="btn-action btn-auto" onclick="autoFillBoard()">🎲 残りを適当に埋める</button>
+
         <div class="boss-header">
             <div style="padding-top:5px; font-weight:bold; color:#666;">MEMBER</div>
             <select class="boss-select" id="boss-1" onchange="saveBoardState()"></select>
@@ -122,6 +137,17 @@
             <select class="boss-select" id="boss-3" onchange="saveBoardState()"></select>
         </div>
         <div id="battle-grid"></div>
+
+        <div class="share-area">
+            <h4 style="margin:0 0 5px 0;">共有用URL</h4>
+            <div style="font-size:0.8rem; color:#666;">現在の設定（メンバー・配置）をURLにして共有できます。</div>
+            <div class="share-input-group">
+                <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
+                <button class="btn-action btn-copy" onclick="copyShareUrl()">コピー</button>
+            </div>
+            <button class="btn-action" style="background:#007bff; margin-top:10px; width:100%;" onclick="generateShareUrl()">URLを発行/更新</button>
+        </div>
+        <div style="height: 50px;"></div>
     </div>
 
     <div class="deck-container">
@@ -148,20 +174,26 @@
 
     // --- State ---
     let members = []; 
-    // State persistence keys
     const KEY_MEMBERS = 'gt_members_v2';
     const KEY_BOARD = 'gt_board_state';
-
-    // 作戦ボードの状態（デフォルト値）
     let boardState = Array(6).fill(null).map(() => [null, null, null]);
-    let selectedPlayerIndices = [-1, -1, -1, -1, -1, -1]; // -1 = 未選択
+    let selectedPlayerIndices = [-1, -1, -1, -1, -1, -1];
     let selectedJob = null; 
 
     // --- Init ---
     window.onload = function() {
-        loadSettings();
-        loadBoardState(); // ボードの状態も復元
-        initBoardUI();
+        // URLパラメータがあるかチェック
+        const params = new URLSearchParams(window.location.search);
+        const sharedData = params.get('data');
+
+        if (sharedData) {
+            loadFromUrl(sharedData);
+        } else {
+            loadSettings();
+            loadBoardState();
+            initBoardUI();
+        }
+        
         renderDeck();
         switchTab('board');
     };
@@ -170,7 +202,6 @@
         if(document.getElementById('settings').classList.contains('active')) {
             saveSettingsFromDOM(); 
         }
-
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
         
@@ -185,16 +216,10 @@
         }
     }
 
-    // --- Persistence Logic ---
-
+    // --- Persistence ---
     function loadSettings() {
         const json = localStorage.getItem(KEY_MEMBERS);
-        if (json) {
-            members = JSON.parse(json);
-        } else {
-            // デフォルトメンバーなし（空からスタート）
-            members = [];
-        }
+        members = json ? JSON.parse(json) : [];
     }
 
     function loadBoardState() {
@@ -203,13 +228,14 @@
             const state = JSON.parse(json);
             if(state.board) boardState = state.board;
             if(state.players) selectedPlayerIndices = state.players;
-            
-            // ボスの復元
             if(state.bosses) {
-                setTimeout(() => { // UI生成待ち
-                    document.getElementById('boss-1').value = state.bosses[0];
-                    document.getElementById('boss-2').value = state.bosses[1];
-                    document.getElementById('boss-3').value = state.bosses[2];
+                setTimeout(() => { 
+                    const b1 = document.getElementById('boss-1');
+                    if(b1) {
+                        b1.value = state.bosses[0];
+                        document.getElementById('boss-2').value = state.bosses[1];
+                        document.getElementById('boss-3').value = state.bosses[2];
+                    }
                 }, 0);
             }
         }
@@ -219,17 +245,11 @@
         const boss1 = document.getElementById('boss-1')?.value || "Ongo";
         const boss2 = document.getElementById('boss-2')?.value || "Kalunga";
         const boss3 = document.getElementById('boss-3')?.value || "Mboze";
-
-        const state = {
-            board: boardState,
-            players: selectedPlayerIndices,
-            bosses: [boss1, boss2, boss3]
-        };
+        const state = { board: boardState, players: selectedPlayerIndices, bosses: [boss1, boss2, boss3] };
         localStorage.setItem(KEY_BOARD, JSON.stringify(state));
     }
 
     // --- Settings Logic ---
-
     function parseJobString(str) {
         if(!str) return [];
         if(str.includes('全')) return [...JOBS];
@@ -238,27 +258,17 @@
 
     function saveSettingsFromDOM() {
         const rows = document.getElementById('settings-list').children;
-        // リストが空の場合は処理しない（初期ロード時など）
         if (rows.length === 0 && members.length > 0) return;
-
         const newMembers = [];
         for(let i=0; i<rows.length; i++) {
             const name = document.getElementById(`name-${i}`).value;
             const masterStr = document.getElementById(`master-${i}`).value;
             const lv99Str = document.getElementById(`lv99-${i}`).value;
-            
             if (name || masterStr || lv99Str) {
                 const mJobs = parseJobString(masterStr);
                 let lJobs = parseJobString(lv99Str);
-                lJobs = lJobs.filter(j => !mJobs.includes(j)); // 重複排除
-
-                newMembers.push({
-                    name: name,
-                    masterStr: masterStr,
-                    lv99Str: lv99Str,
-                    masterJobs: mJobs,
-                    lv99Jobs: lJobs
-                });
+                lJobs = lJobs.filter(j => !mJobs.includes(j));
+                newMembers.push({ name: name, masterStr: masterStr, lv99Str: lv99Str, masterJobs: mJobs, lv99Jobs: lJobs });
             }
         }
         members = newMembers;
@@ -292,37 +302,28 @@
 
     function deleteMember(targetIdx) {
         if(!confirm('削除しますか？')) return;
-
-        saveSettingsFromDOM(); // 現在の入力を保存
-
-        // 1. 配列から削除
+        saveSettingsFromDOM(); 
         members.splice(targetIdx, 1);
         localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
 
-        // 2. 作戦ボードのインデックス参照を修正 (ここが修正ポイント)
         for(let r=0; r<6; r++) {
             const currentP = selectedPlayerIndices[r];
             if (currentP === targetIdx) {
-                // 削除された人を指していた -> 未選択にする
                 selectedPlayerIndices[r] = -1;
-                boardState[r] = [null, null, null]; // ジョブ配置もクリア
+                boardState[r] = [null, null, null];
             } else if (currentP > targetIdx) {
-                // 削除された人より後ろの人 -> インデックスを詰める
                 selectedPlayerIndices[r] = currentP - 1;
             }
         }
-        saveBoardState(); // 修正した状態を保存
-
+        saveBoardState(); 
         renderSettingsList();
     }
 
     // --- Board Logic ---
-
     function initBoardUI() {
         const selects = document.querySelectorAll('.boss-select');
         selects.forEach((sel, i) => {
             sel.innerHTML = BOSS_DATA.map(b => `<option value="${b.name}">${b.name} (${b.weak})</option>`).join('');
-            // デフォルト値
             if(i===0) sel.value = "Ongo"; if(i===1) sel.value = "Kalunga"; if(i===2) sel.value = "Mboze";
         });
 
@@ -331,33 +332,18 @@
         for(let r=0; r<6; r++) {
             const rowDiv = document.createElement('div');
             rowDiv.className = 'grid-row';
-            
-            // Player Column
-            const pCol = document.createElement('div');
-            pCol.className = 'player-col';
-            
-            const pSel = document.createElement('select');
-            pSel.className = 'player-select';
-            // 変更時処理
+            const pCol = document.createElement('div'); pCol.className = 'player-col';
+            const pSel = document.createElement('select'); pSel.className = 'player-select';
             pSel.onchange = (e) => { 
                 selectedPlayerIndices[r] = parseInt(e.target.value); 
-                validateRowJobs(r); 
-                saveBoardState(); // 保存
-                refreshBoard(); 
+                validateRowJobs(r); saveBoardState(); refreshBoard(); 
             };
             pCol.appendChild(pSel);
-            
-            const pJobs = document.createElement('div');
-            pJobs.className = 'player-jobs-preview';
-            pJobs.id = `player-jobs-${r}`;
+            const pJobs = document.createElement('div'); pJobs.className = 'player-jobs-preview'; pJobs.id = `player-jobs-${r}`;
             pCol.appendChild(pJobs);
             rowDiv.appendChild(pCol);
-
-            // Battle Slots
             for(let c=0; c<3; c++) {
-                const slot = document.createElement('div');
-                slot.className = 'job-slot';
-                slot.id = `slot-${r}-${c}`;
+                const slot = document.createElement('div'); slot.className = 'job-slot'; slot.id = `slot-${r}-${c}`;
                 slot.onclick = () => handleSlotClick(r, c);
                 slot.ondragover = (e) => e.preventDefault();
                 slot.ondrop = (e) => { e.preventDefault(); setJob(r, c, e.dataTransfer.getData("text")); };
@@ -369,42 +355,26 @@
 
     function refreshBoard() {
         const selects = document.querySelectorAll('.player-select');
-        
         selects.forEach((sel, r) => {
-            // 安全策: インデックスが範囲外なら未選択(-1)に戻す
-            if (selectedPlayerIndices[r] >= members.length) {
-                selectedPlayerIndices[r] = -1;
-            }
+            if (selectedPlayerIndices[r] >= members.length) selectedPlayerIndices[r] = -1;
             const currentVal = selectedPlayerIndices[r];
-            
-            // Option生成
             let html = `<option value="-1" ${currentVal === -1 ? 'selected' : ''}>-- 選択 --</option>`;
-            
             members.forEach((m, idx) => {
-                // 他行での使用状況チェック
                 const isSelectedElsewhere = selectedPlayerIndices.some((val, rowIdx) => rowIdx !== r && val === idx);
                 const disabledAttr = isSelectedElsewhere ? 'disabled style="color:#ccc"' : '';
                 const nameLabel = m.name + (isSelectedElsewhere ? ' (選択済)' : '');
-                const selectedAttr = (idx === currentVal) ? 'selected' : '';
-                
-                html += `<option value="${idx}" ${selectedAttr} ${disabledAttr}>${nameLabel}</option>`;
+                html += `<option value="${idx}" ${idx === currentVal ? 'selected' : ''} ${disabledAttr}>${nameLabel}</option>`;
             });
-            sel.innerHTML = html;
-            // 明示的にvalueをセット（innerHTML入れ替え後の念のため）
-            sel.value = currentVal; 
+            sel.innerHTML = html; sel.value = currentVal; 
             
-            // プレビュー表示
             const previewDiv = document.getElementById(`player-jobs-${r}`);
             if (currentVal !== -1 && members[currentVal]) {
                 const mJobs = members[currentVal].masterJobs.map(j => `<span class="job-star">${j}</span>`).join(' ');
                 const nJobs = members[currentVal].lv99Jobs.map(j => `<span class="job-norm">${j}</span>`).join(' ');
-                
                 if (members[currentVal].masterStr.includes('全')) previewDiv.innerHTML = '<span class="job-star">全マスター</span>';
                 else if (members[currentVal].lv99Str.includes('全')) previewDiv.innerHTML = '<span class="job-norm">全Lv99</span>';
                 else previewDiv.innerHTML = (mJobs + ' ' + nJobs).trim();
-            } else {
-                previewDiv.textContent = "";
-            }
+            } else { previewDiv.textContent = ""; }
         });
 
         const usedJobs = new Set();
@@ -413,39 +383,22 @@
         for(let r=0; r<6; r++) {
             const pIdx = selectedPlayerIndices[r];
             const player = (pIdx !== -1) ? members[pIdx] : null;
-
             for(let c=0; c<3; c++) {
                 const slot = document.getElementById(`slot-${r}-${c}`);
                 const currentJob = boardState[r][c];
-                
-                slot.innerHTML = currentJob || "";
-                slot.className = 'job-slot'; 
-
-                // ジョブ配置済み
+                slot.innerHTML = currentJob || ""; slot.className = 'job-slot'; 
                 if (currentJob) {
                     slot.classList.add('has-job');
-                    if(player && player.masterJobs.includes(currentJob)) {
-                        slot.innerHTML += '<span class="slot-mark-master">★</span>';
-                    }
+                    if(player && player.masterJobs.includes(currentJob)) slot.innerHTML += '<span class="slot-mark-master">★</span>';
                 }
-                
-                // プレイヤー未選択ならスロット無効
-                if (!player) {
-                    slot.classList.add('disabled');
-                    continue; 
-                }
-
-                // ガイド表示
+                if (!player) { slot.classList.add('disabled'); continue; }
                 if (selectedJob) {
                     const isGlobalUsed = usedJobs.has(selectedJob) && currentJob !== selectedJob;
                     const isMaster = player.masterJobs.includes(selectedJob);
                     const isLv99 = player.lv99Jobs.includes(selectedJob);
-
-                    if ((!isMaster && !isLv99) || isGlobalUsed) {
-                        slot.classList.add('disabled');
-                    } else {
-                        if(isMaster) slot.classList.add('target-master');
-                        else if(isLv99) slot.classList.add('target-lv99');
+                    if ((!isMaster && !isLv99) || isGlobalUsed) slot.classList.add('disabled');
+                    else {
+                        if(isMaster) slot.classList.add('target-master'); else if(isLv99) slot.classList.add('target-lv99');
                     }
                 }
             }
@@ -454,98 +407,177 @@
     }
 
     function renderDeck(usedJobs) {
-        const container = document.getElementById('deck-grid');
-        container.innerHTML = '';
+        const container = document.getElementById('deck-grid'); container.innerHTML = '';
         const msg = document.getElementById('deck-message');
-
-        if (!selectedJob) {
-            msg.textContent = "ジョブを選択してください";
-            msg.style.color = "#007bff";
-        } else {
-            msg.textContent = `「${JOB_FULLNAMES[selectedJob]}」を選択中...`;
-            msg.style.color = "#d9534f";
-        }
-        
+        if (!selectedJob) { msg.textContent = "ジョブを選択してください"; msg.style.color = "#007bff"; } 
+        else { msg.textContent = `「${JOB_FULLNAMES[selectedJob]}」を選択中...`; msg.style.color = "#d9534f"; }
         JOBS.forEach(job => {
-            const btn = document.createElement('div');
-            btn.className = 'job-chip';
+            const btn = document.createElement('div'); btn.className = 'job-chip';
             if (usedJobs.has(job)) btn.classList.add('used');
             if (selectedJob === job) btn.classList.add('selected');
             btn.textContent = JOB_FULLNAMES[job];
-            
-            const action = () => {
+            btn.onclick = () => {
                 if(usedJobs.has(job)) return;
-                selectedJob = (selectedJob === job) ? null : job;
-                refreshBoard();
+                selectedJob = (selectedJob === job) ? null : job; refreshBoard();
             };
-            
-            btn.onclick = action;
             btn.draggable = true;
             btn.ondragstart = (e) => {
                 if(usedJobs.has(job)) { e.preventDefault(); return; }
-                e.dataTransfer.setData("text", job);
-                selectedJob = job; 
-                refreshBoard();
+                e.dataTransfer.setData("text", job); selectedJob = job; refreshBoard();
             };
             container.appendChild(btn);
         });
     }
 
     function handleSlotClick(r, c) {
-        // プレイヤー未選択なら何もしない
         if (selectedPlayerIndices[r] === -1) return;
-
-        if (selectedJob) setJob(r, c, selectedJob);
-        else if (boardState[r][c]) setJob(r, c, null);
+        if (selectedJob) setJob(r, c, selectedJob); else if (boardState[r][c]) setJob(r, c, null);
     }
 
     function setJob(r, c, job) {
         const pIdx = selectedPlayerIndices[r];
-        if (pIdx === -1) return; // プレイヤー未選択
-        
+        if (pIdx === -1) return;
         const player = members[pIdx];
-
-        if (!job) {
-            boardState[r][c] = null;
-            selectedJob = null; 
-            saveBoardState(); // 保存
-            refreshBoard();
-            return;
-        }
-
+        if (!job) { boardState[r][c] = null; selectedJob = null; saveBoardState(); refreshBoard(); return; }
         const isMaster = player.masterJobs.includes(job);
         const isLv99 = player.lv99Jobs.includes(job);
-
         if (!isMaster && !isLv99) return; 
-
-        const isUsed = boardState.some((row, rr) => 
-            row.some((j, cc) => j === job && !(rr === r && cc === c))
-        );
+        const isUsed = boardState.some((row, rr) => row.some((j, cc) => j === job && !(rr === r && cc === c)));
         if (isUsed) { alert(`${job} は既に使用されています`); return; }
-
-        boardState[r][c] = job;
-        selectedJob = null; 
-        saveBoardState(); // 保存
-        refreshBoard();
+        boardState[r][c] = job; selectedJob = null; saveBoardState(); refreshBoard();
     }
 
     function validateRowJobs(r) {
         const pIdx = selectedPlayerIndices[r];
-        if(pIdx === -1) {
-            boardState[r] = [null, null, null];
-            return;
-        }
-        
-        const player = members[pIdx];
-        if(!player) return;
-
+        if(pIdx === -1) { boardState[r] = [null, null, null]; return; }
+        const player = members[pIdx]; if(!player) return;
         for(let c=0; c<3; c++) {
             const job = boardState[r][c];
-            if(job && !player.masterJobs.includes(job) && !player.lv99Jobs.includes(job)) {
-                boardState[r][c] = null; 
-            }
+            if(job && !player.masterJobs.includes(job) && !player.lv99Jobs.includes(job)) boardState[r][c] = null; 
         }
     }
+
+    // --- Auto Fill Feature ---
+    function autoFillBoard() {
+        if(!confirm("空いている枠を自動で埋めますか？\n（マスター済みを優先して、ランダムに決定します）")) return;
+
+        // 現在の使用状況を取得
+        const usedJobs = new Set();
+        boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
+
+        // 空きスロットをリストアップ
+        const emptySlots = [];
+        for(let r=0; r<6; r++) {
+            if(selectedPlayerIndices[r] === -1) continue; // プレイヤー未選択行は無視
+            for(let c=0; c<3; c++) {
+                if(!boardState[r][c]) emptySlots.push({r, c});
+            }
+        }
+
+        // ランダム順にする（偏りを防ぐ）
+        shuffleArray(emptySlots);
+
+        emptySlots.forEach(slot => {
+            const pIdx = selectedPlayerIndices[slot.r];
+            const player = members[pIdx];
+            
+            // 候補ジョブ: (Master + Lv99) から Used を引く
+            // 優先度: Master > Lv99
+            
+            const validMaster = player.masterJobs.filter(j => !usedJobs.has(j));
+            const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
+
+            let pick = null;
+
+            if (validMaster.length > 0) {
+                pick = validMaster[Math.floor(Math.random() * validMaster.length)];
+            } else if (validLv99.length > 0) {
+                pick = validLv99[Math.floor(Math.random() * validLv99.length)];
+            }
+
+            if (pick) {
+                boardState[slot.r][slot.c] = pick;
+                usedJobs.add(pick); // 即座に使用済みに登録
+            }
+        });
+
+        saveBoardState();
+        refreshBoard();
+    }
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    // --- Sharing Feature ---
+    function generateShareUrl() {
+        const boss1 = document.getElementById('boss-1')?.value;
+        const boss2 = document.getElementById('boss-2')?.value;
+        const boss3 = document.getElementById('boss-3')?.value;
+
+        // 共有データオブジェクト
+        const dataObj = {
+            m: members,
+            p: selectedPlayerIndices,
+            b: boardState,
+            bo: [boss1, boss2, boss3]
+        };
+
+        // Base64エンコード (日本語対応ハック)
+        const jsonStr = JSON.stringify(dataObj);
+        const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+        
+        // URL生成
+        const url = window.location.protocol + "//" + window.location.host + window.location.pathname + "?data=" + base64;
+        
+        document.getElementById('share-url').value = url;
+    }
+
+    function copyShareUrl() {
+        const copyText = document.getElementById("share-url");
+        if(!copyText.value) return;
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); 
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            alert("URLをコピーしました！");
+        }, () => {
+            alert("コピーに失敗しました");
+        });
+    }
+
+    function loadFromUrl(base64) {
+        try {
+            // 日本語デコード対応
+            const jsonStr = decodeURIComponent(escape(atob(base64)));
+            const data = JSON.parse(jsonStr);
+
+            if(confirm("共有されたデータを開きますか？\n\n注意：現在の作戦ボードの内容は上書きされます。\n(保存したい場合はキャンセルして、一度設定画面を確認してください)")) {
+                // データ適用
+                if(data.m) {
+                    members = data.m;
+                    localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
+                }
+                if(data.b) boardState = data.b;
+                if(data.p) selectedPlayerIndices = data.p;
+                
+                // ボス情報はDOMロード後に適用するため一旦保存
+                if(data.bo) {
+                    const tempState = { board: boardState, players: selectedPlayerIndices, bosses: data.bo };
+                    localStorage.setItem(KEY_BOARD, JSON.stringify(tempState));
+                }
+                
+                // URLパラメータを消してリロード（クリーンなURLにする）
+                window.location.href = window.location.pathname;
+            }
+        } catch(e) {
+            console.error(e);
+            alert("データの読み込みに失敗しました。\nURLが壊れている可能性があります。");
+        }
+    }
+
 </script>
 </body>
 </html>
