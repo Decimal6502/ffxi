@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gaol Tactician Epsilon</title>
+    <title>Gaol Tactician Zeta</title>
     <style>
         :root {
             --primary: #007bff;
-            --master-bg: #fff3cd; /* マスター用の背景色（薄い金） */
-            --master-border: #ffc107;
-            --lv99-bg: #e2e6ea;   /* Lv99用の背景色（薄いグレー） */
-            --lv99-border: #adb5bd;
-            --bg: #f4f4f9;
-            --border: #ddd;
+            --master-bg: #fff3cd; --master-border: #ffc107;
+            --lv99-bg: #e2e6ea;   --lv99-border: #adb5bd;
+            --bg: #f4f4f9; --border: #ddd;
         }
         body { font-family: sans-serif; margin: 0; padding: 0; background: var(--bg); touch-action: manipulation; padding-bottom: 200px; }
         
@@ -24,23 +21,19 @@
         .content { display: none; padding: 10px; max-width: 800px; margin: 0 auto; }
         .content.active { display: block; }
         
-        /* --- 設定画面 --- */
+        /* 設定画面 */
         .member-row { 
-            background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; 
-            border: 1px solid var(--border);
+            background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border);
             display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center;
         }
         .inputs-col { display: flex; flex-direction: column; gap: 5px; }
-        .member-row input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; }
-        .inp-name { width: 100%; box-sizing: border-box; }
-        .inp-jobs { width: 100%; box-sizing: border-box; }
+        .member-row input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box;}
         .job-label { font-size: 0.7rem; color: #666; margin-bottom: 1px; }
-        
         .btn-action { padding: 8px; border-radius: 4px; border: none; cursor: pointer; }
         .btn-add { background: #28a745; color: white; width: 100%; margin-top: 10px; padding: 12px; font-size: 16px; }
         .del-row { background: #dc3545; color: white; height: 100%; }
 
-        /* --- 作戦ボード --- */
+        /* 作戦ボード */
         .boss-header { 
             display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; 
             margin-bottom: 5px; text-align: center; font-size: 0.85em; 
@@ -48,25 +41,16 @@
         }
         .boss-select { width: 100%; padding: 4px; font-size: 0.8rem; border: 1px solid #999; border-radius: 4px;}
 
-        .grid-row { 
-            display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; 
-            margin-bottom: 6px; 
-            min-height: 60px; 
-        }
+        .grid-row { display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; margin-bottom: 6px; min-height: 60px; }
         
         .player-col { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-        /* 選択不可のオプションが見やすいようにselect自体のスタイルも調整 */
         .player-select { width: 100%; padding: 4px; font-size: 0.85rem; background: white; border: 1px solid var(--border); height: 30px;}
         
         .player-jobs-preview { 
             font-size: 0.75rem; color: #444; background: #e9ecef; 
             padding: 3px 5px; border-radius: 3px; line-height: 1.3;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 3;
-            overflow: hidden;
-            height: auto; 
-            min-height: 2.6em; 
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+            height: auto; min-height: 2.6em; 
         }
         .job-star { font-weight: bold; color: #d39e00; } 
         .job-norm { color: #555; font-size: 0.95em; }
@@ -79,21 +63,10 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .job-slot.disabled { background-color: #f8f9fa; border-color: #eee; cursor: not-allowed; opacity: 0.6; }
-        
-        .job-slot.target-master { 
-            background-color: var(--master-bg); 
-            border: 2px solid var(--master-border); 
-            animation: pulse-gold 1.5s infinite;
-        }
-        .job-slot.target-lv99 { 
-            background-color: var(--lv99-bg); 
-            border: 2px solid var(--lv99-border); 
-        }
+        .job-slot.target-master { background-color: var(--master-bg); border: 2px solid var(--master-border); animation: pulse-gold 1.5s infinite; }
+        .job-slot.target-lv99 { background-color: var(--lv99-bg); border: 2px solid var(--lv99-border); }
         .job-slot.has-job { background-color: #fff; border: 2px solid #555; color: #333; }
-        
-        .slot-mark-master {
-            position: absolute; top: 0; right: 2px; color: #ffc107; font-size: 0.7rem;
-        }
+        .slot-mark-master { position: absolute; top: 0; right: 2px; color: #ffc107; font-size: 0.7rem; }
 
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
@@ -144,11 +117,10 @@
     <div id="board" class="content active">
         <div class="boss-header">
             <div style="padding-top:5px; font-weight:bold; color:#666;">MEMBER</div>
-            <select class="boss-select" id="boss-1"></select>
-            <select class="boss-select" id="boss-2"></select>
-            <select class="boss-select" id="boss-3"></select>
+            <select class="boss-select" id="boss-1" onchange="saveBoardState()"></select>
+            <select class="boss-select" id="boss-2" onchange="saveBoardState()"></select>
+            <select class="boss-select" id="boss-3" onchange="saveBoardState()"></select>
         </div>
-
         <div id="battle-grid"></div>
     </div>
 
@@ -158,7 +130,7 @@
     </div>
 
 <script>
-    // --- データ ---
+    // --- データ定数 ---
     const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
     const JOB_FULLNAMES = {
         '戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ',
@@ -176,13 +148,19 @@
 
     // --- State ---
     let members = []; 
+    // State persistence keys
+    const KEY_MEMBERS = 'gt_members_v2';
+    const KEY_BOARD = 'gt_board_state';
+
+    // 作戦ボードの状態（デフォルト値）
     let boardState = Array(6).fill(null).map(() => [null, null, null]);
-    let selectedPlayerIndices = [0, 1, 2, 3, 4, 5]; 
+    let selectedPlayerIndices = [-1, -1, -1, -1, -1, -1]; // -1 = 未選択
     let selectedJob = null; 
 
     // --- Init ---
     window.onload = function() {
         loadSettings();
+        loadBoardState(); // ボードの状態も復元
         initBoardUI();
         renderDeck();
         switchTab('board');
@@ -207,34 +185,50 @@
         }
     }
 
-    // --- Settings Logic ---
+    // --- Persistence Logic ---
+
     function loadSettings() {
-        const json = localStorage.getItem('gt_members_v2');
+        const json = localStorage.getItem(KEY_MEMBERS);
         if (json) {
             members = JSON.parse(json);
         } else {
-            const oldJson = localStorage.getItem('gt_members');
-            if(oldJson) {
-                const oldMembers = JSON.parse(oldJson);
-                members = oldMembers.map(m => ({
-                    name: m.name,
-                    masterStr: m.jobs, 
-                    lv99Str: "",
-                    masterJobs: m.validJobs || [],
-                    lv99Jobs: []
-                }));
-            } else {
-                members = [
-                    {name: "Player1", masterStr: "全", lv99Str:"", masterJobs:[...JOBS], lv99Jobs:[]},
-                    {name: "Player2", masterStr: "", lv99Str:"全", masterJobs:[], lv99Jobs:[...JOBS]},
-                    {name: "Player3", masterStr: "風吟剣", lv99Str:"白学", masterJobs:['風','吟','剣'], lv99Jobs:['白','学']},
-                    {name: "Player4", masterStr: "", lv99Str:"", masterJobs:[], lv99Jobs:[]},
-                    {name: "Player5", masterStr: "", lv99Str:"", masterJobs:[], lv99Jobs:[]},
-                    {name: "Player6", masterStr: "", lv99Str:"", masterJobs:[], lv99Jobs:[]}
-                ];
+            // デフォルトメンバーなし（空からスタート）
+            members = [];
+        }
+    }
+
+    function loadBoardState() {
+        const json = localStorage.getItem(KEY_BOARD);
+        if (json) {
+            const state = JSON.parse(json);
+            if(state.board) boardState = state.board;
+            if(state.players) selectedPlayerIndices = state.players;
+            
+            // ボスの復元
+            if(state.bosses) {
+                setTimeout(() => { // UI生成待ち
+                    document.getElementById('boss-1').value = state.bosses[0];
+                    document.getElementById('boss-2').value = state.bosses[1];
+                    document.getElementById('boss-3').value = state.bosses[2];
+                }, 0);
             }
         }
     }
+
+    function saveBoardState() {
+        const boss1 = document.getElementById('boss-1')?.value || "Ongo";
+        const boss2 = document.getElementById('boss-2')?.value || "Kalunga";
+        const boss3 = document.getElementById('boss-3')?.value || "Mboze";
+
+        const state = {
+            board: boardState,
+            players: selectedPlayerIndices,
+            bosses: [boss1, boss2, boss3]
+        };
+        localStorage.setItem(KEY_BOARD, JSON.stringify(state));
+    }
+
+    // --- Settings Logic ---
 
     function parseJobString(str) {
         if(!str) return [];
@@ -244,6 +238,7 @@
 
     function saveSettingsFromDOM() {
         const rows = document.getElementById('settings-list').children;
+        // リストが空の場合は処理しない（初期ロード時など）
         if (rows.length === 0 && members.length > 0) return;
 
         const newMembers = [];
@@ -255,9 +250,7 @@
             if (name || masterStr || lv99Str) {
                 const mJobs = parseJobString(masterStr);
                 let lJobs = parseJobString(lv99Str);
-                
-                // 重複排除ロジック
-                lJobs = lJobs.filter(j => !mJobs.includes(j));
+                lJobs = lJobs.filter(j => !mJobs.includes(j)); // 重複排除
 
                 newMembers.push({
                     name: name,
@@ -269,7 +262,7 @@
             }
         }
         members = newMembers;
-        localStorage.setItem('gt_members_v2', JSON.stringify(members));
+        localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
     }
 
     function renderSettingsList() {
@@ -279,18 +272,10 @@
             const div = document.createElement('div');
             div.className = 'member-row';
             div.innerHTML = `
-                <div>
-                    <input type="text" class="inp-name" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()">
-                </div>
+                <div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div>
                 <div class="inputs-col">
-                    <div>
-                        <div class="job-label">★マスター (金枠)</div>
-                        <input type="text" class="inp-jobs" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onchange="saveSettingsFromDOM()">
-                    </div>
-                    <div>
-                        <div class="job-label">Lv99 (青枠)</div>
-                        <input type="text" class="inp-jobs" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ吟" onchange="saveSettingsFromDOM()">
-                    </div>
+                    <div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onchange="saveSettingsFromDOM()"></div>
+                    <div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ吟" onchange="saveSettingsFromDOM()"></div>
                 </div>
                 <button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>
             `;
@@ -305,20 +290,39 @@
         saveSettingsFromDOM(); 
     }
 
-    function deleteMember(idx) {
-        if(confirm('削除しますか？')) {
-            saveSettingsFromDOM();
-            members.splice(idx, 1);
-            localStorage.setItem('gt_members_v2', JSON.stringify(members));
-            renderSettingsList();
+    function deleteMember(targetIdx) {
+        if(!confirm('削除しますか？')) return;
+
+        saveSettingsFromDOM(); // 現在の入力を保存
+
+        // 1. 配列から削除
+        members.splice(targetIdx, 1);
+        localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
+
+        // 2. 作戦ボードのインデックス参照を修正 (ここが修正ポイント)
+        for(let r=0; r<6; r++) {
+            const currentP = selectedPlayerIndices[r];
+            if (currentP === targetIdx) {
+                // 削除された人を指していた -> 未選択にする
+                selectedPlayerIndices[r] = -1;
+                boardState[r] = [null, null, null]; // ジョブ配置もクリア
+            } else if (currentP > targetIdx) {
+                // 削除された人より後ろの人 -> インデックスを詰める
+                selectedPlayerIndices[r] = currentP - 1;
+            }
         }
+        saveBoardState(); // 修正した状態を保存
+
+        renderSettingsList();
     }
 
     // --- Board Logic ---
+
     function initBoardUI() {
         const selects = document.querySelectorAll('.boss-select');
         selects.forEach((sel, i) => {
             sel.innerHTML = BOSS_DATA.map(b => `<option value="${b.name}">${b.name} (${b.weak})</option>`).join('');
+            // デフォルト値
             if(i===0) sel.value = "Ongo"; if(i===1) sel.value = "Kalunga"; if(i===2) sel.value = "Mboze";
         });
 
@@ -334,14 +338,19 @@
             
             const pSel = document.createElement('select');
             pSel.className = 'player-select';
-            pSel.onchange = (e) => { selectedPlayerIndices[r] = parseInt(e.target.value); validateRowJobs(r); refreshBoard(); };
+            // 変更時処理
+            pSel.onchange = (e) => { 
+                selectedPlayerIndices[r] = parseInt(e.target.value); 
+                validateRowJobs(r); 
+                saveBoardState(); // 保存
+                refreshBoard(); 
+            };
             pCol.appendChild(pSel);
             
             const pJobs = document.createElement('div');
             pJobs.className = 'player-jobs-preview';
             pJobs.id = `player-jobs-${r}`;
             pCol.appendChild(pJobs);
-            
             rowDiv.appendChild(pCol);
 
             // Battle Slots
@@ -362,23 +371,31 @@
         const selects = document.querySelectorAll('.player-select');
         
         selects.forEach((sel, r) => {
+            // 安全策: インデックスが範囲外なら未選択(-1)に戻す
+            if (selectedPlayerIndices[r] >= members.length) {
+                selectedPlayerIndices[r] = -1;
+            }
             const currentVal = selectedPlayerIndices[r];
             
-            // メンバー選択プルダウンの生成（重複チェック付き）
-            sel.innerHTML = members.map((m, idx) => {
-                // 他の行で選択されているかチェック
+            // Option生成
+            let html = `<option value="-1" ${currentVal === -1 ? 'selected' : ''}>-- 選択 --</option>`;
+            
+            members.forEach((m, idx) => {
+                // 他行での使用状況チェック
                 const isSelectedElsewhere = selectedPlayerIndices.some((val, rowIdx) => rowIdx !== r && val === idx);
-                
-                // 選択済みならdisabled属性をつける
                 const disabledAttr = isSelectedElsewhere ? 'disabled style="color:#ccc"' : '';
                 const nameLabel = m.name + (isSelectedElsewhere ? ' (選択済)' : '');
+                const selectedAttr = (idx === currentVal) ? 'selected' : '';
                 
-                return `<option value="${idx}" ${idx === currentVal ? 'selected' : ''} ${disabledAttr}>${nameLabel}</option>`;
-            }).join('');
+                html += `<option value="${idx}" ${selectedAttr} ${disabledAttr}>${nameLabel}</option>`;
+            });
+            sel.innerHTML = html;
+            // 明示的にvalueをセット（innerHTML入れ替え後の念のため）
+            sel.value = currentVal; 
             
-            // Preview Jobs
+            // プレビュー表示
             const previewDiv = document.getElementById(`player-jobs-${r}`);
-            if (members[currentVal]) {
+            if (currentVal !== -1 && members[currentVal]) {
                 const mJobs = members[currentVal].masterJobs.map(j => `<span class="job-star">${j}</span>`).join(' ');
                 const nJobs = members[currentVal].lv99Jobs.map(j => `<span class="job-norm">${j}</span>`).join(' ');
                 
@@ -395,7 +412,7 @@
 
         for(let r=0; r<6; r++) {
             const pIdx = selectedPlayerIndices[r];
-            const player = members[pIdx];
+            const player = (pIdx !== -1) ? members[pIdx] : null;
 
             for(let c=0; c<3; c++) {
                 const slot = document.getElementById(`slot-${r}-${c}`);
@@ -404,17 +421,25 @@
                 slot.innerHTML = currentJob || "";
                 slot.className = 'job-slot'; 
 
+                // ジョブ配置済み
                 if (currentJob) {
                     slot.classList.add('has-job');
                     if(player && player.masterJobs.includes(currentJob)) {
                         slot.innerHTML += '<span class="slot-mark-master">★</span>';
                     }
                 }
+                
+                // プレイヤー未選択ならスロット無効
+                if (!player) {
+                    slot.classList.add('disabled');
+                    continue; 
+                }
 
+                // ガイド表示
                 if (selectedJob) {
                     const isGlobalUsed = usedJobs.has(selectedJob) && currentJob !== selectedJob;
-                    const isMaster = player && player.masterJobs.includes(selectedJob);
-                    const isLv99 = player && player.lv99Jobs.includes(selectedJob);
+                    const isMaster = player.masterJobs.includes(selectedJob);
+                    const isLv99 = player.lv99Jobs.includes(selectedJob);
 
                     if ((!isMaster && !isLv99) || isGlobalUsed) {
                         slot.classList.add('disabled');
@@ -467,17 +492,23 @@
     }
 
     function handleSlotClick(r, c) {
+        // プレイヤー未選択なら何もしない
+        if (selectedPlayerIndices[r] === -1) return;
+
         if (selectedJob) setJob(r, c, selectedJob);
         else if (boardState[r][c]) setJob(r, c, null);
     }
 
     function setJob(r, c, job) {
         const pIdx = selectedPlayerIndices[r];
+        if (pIdx === -1) return; // プレイヤー未選択
+        
         const player = members[pIdx];
 
         if (!job) {
             boardState[r][c] = null;
             selectedJob = null; 
+            saveBoardState(); // 保存
             refreshBoard();
             return;
         }
@@ -494,13 +525,20 @@
 
         boardState[r][c] = job;
         selectedJob = null; 
+        saveBoardState(); // 保存
         refreshBoard();
     }
 
     function validateRowJobs(r) {
         const pIdx = selectedPlayerIndices[r];
+        if(pIdx === -1) {
+            boardState[r] = [null, null, null];
+            return;
+        }
+        
         const player = members[pIdx];
         if(!player) return;
+
         for(let c=0; c<3; c++) {
             const job = boardState[r][c];
             if(job && !player.masterJobs.includes(job) && !player.lv99Jobs.includes(job)) {
