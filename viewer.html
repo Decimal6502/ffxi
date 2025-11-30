@@ -33,6 +33,11 @@
     <div id="battle-grid"></div>
 
 <script>
+    // ▼ 辞書データの定義を追加 (index.htmlと同期させる必要があります)
+    const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
+    // 名前だけあれば復元可能なので名前リストとして定義
+    const BOSS_NAMES = ["Ongo","Xevioso","Arebati","Ngai","Kalunga","Mboze","Bumba","Gogmagog","Aristaeus","Raskovniche","Marmorkrebs","Gigelorum","Procne","Henwen","Sgili","U Bnai","Dealan-dhe","---"];
+
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
         const sharedData = params.get('s');
@@ -49,59 +54,74 @@
             let str = base64url.replace(/-/g, '+').replace(/_/g, '/');
             while (str.length % 4) str += '=';
             
-            // Binary string -> Uint8Array
+            // Base64 -> Binary String -> Uint8Array
             const binary = atob(str);
             const bytes = new Uint8Array(binary.length);
             for (let i = 0; i < binary.length; i++) {
                 bytes[i] = binary.charCodeAt(i);
             }
             
-            // UTF-8 Decode
+            let offset = 0;
             const decoder = new TextDecoder();
-            const jsonStr = decoder.decode(bytes);
-            const dataArray = JSON.parse(jsonStr);
 
-            // 1. Bosses
-            const bosses = dataArray[0] || [];
-            document.getElementById('boss-1').textContent = bosses[0] || "-";
-            document.getElementById('boss-2').textContent = bosses[1] || "-";
-            document.getElementById('boss-3').textContent = bosses[2] || "-";
+            // 1. Bosses (最初の3バイト)
+            const b1Idx = bytes[offset++] || 0;
+            const b2Idx = bytes[offset++] || 0;
+            const b3Idx = bytes[offset++] || 0;
 
-            // 2. Grid
+            document.getElementById('boss-1').textContent = BOSS_NAMES[b1Idx] || "-";
+            document.getElementById('boss-2').textContent = BOSS_NAMES[b2Idx] || "-";
+            document.getElementById('boss-3').textContent = BOSS_NAMES[b3Idx] || "-";
+
+            // 2. Grid (6行分の読み出し)
             const grid = document.getElementById('battle-grid');
-            
-            for(let i=1; i<dataArray.length; i++) {
-                const row = dataArray[i];
+            grid.innerHTML = ''; // クリア
+
+            for(let i=0; i<6; i++) {
+                // 安全装置: データが足りなければ終了
+                if(offset >= bytes.length) break;
+
+                // 名前: 長さ(1byte) + 文字列
+                const nameLen = bytes[offset++];
+                let name = "";
+                if(nameLen > 0) {
+                    name = decoder.decode(bytes.slice(offset, offset + nameLen));
+                    offset += nameLen;
+                }
+
+                // ジョブ: 3バイト
+                const jobs = [];
+                for(let j=0; j<3; j++) {
+                    const jIdx = bytes[offset++];
+                    // 255は「空」扱い
+                    const jobName = (jIdx !== undefined && jIdx !== 255) ? JOBS[jIdx] : null;
+                    jobs.push(jobName);
+                }
+
+                // --- 描画処理 (以前と同じHTML構造を生成) ---
                 const div = document.createElement('div');
                 div.className = 'grid-row';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'p-name-box';
+                nameDiv.textContent = name || "-";
+                div.appendChild(nameDiv);
 
-                if (row && row.length > 0) {
-                    const name = row[0];
-                    const jobs = [row[1], row[2], row[3]];
-
-                    const nameDiv = document.createElement('div');
-                    nameDiv.className = 'p-name-box';
-                    nameDiv.textContent = name;
-                    div.appendChild(nameDiv);
-
-                    jobs.forEach(job => {
-                        const slot = document.createElement('div');
-                        slot.className = 'job-slot';
-                        if(job) {
-                            slot.classList.add('has-job');
-                            slot.textContent = job;
-                        }
-                        div.appendChild(slot);
-                    });
-                } else {
-                    div.innerHTML = `<div class="p-name-box">-</div><div class="job-slot"></div><div class="job-slot"></div><div class="job-slot"></div>`;
-                }
+                jobs.forEach(job => {
+                    const slot = document.createElement('div');
+                    slot.className = 'job-slot';
+                    if(job) {
+                        slot.classList.add('has-job');
+                        slot.textContent = job;
+                    }
+                    div.appendChild(slot);
+                });
                 grid.appendChild(div);
             }
 
         } catch(e) {
             console.error(e);
-            alert("データの読み込みに失敗しました。\nURLが正しくない可能性があります。");
+            alert("データの読み込みに失敗しました。\nURLが正しくないか、形式が古いです。");
         }
     }
 </script>
