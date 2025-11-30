@@ -401,10 +401,9 @@
         <div id="battle-grid"></div>
 
         <div class="share-area">
-            <h4 style="margin:0 0 5px 0;">共有用URL発行 (Mu版)</h4>
+            <h4 style="margin:0 0 5px 0;">共有用URL発行</h4>
             <div style="font-size:0.8rem; color:#666;">
-                データをバイナリ圧縮してURLを生成します。<br>
-                ※文字化けに強く、URLが非常に短くなります。
+                データ共有用のURLを生成します。
             </div>
             <div class="share-input-group">
                 <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
@@ -531,7 +530,7 @@
             const container = document.getElementById('settings-list'); container.innerHTML = '';
             members.forEach((m, idx) => {
                 const div = document.createElement('div'); div.className = 'member-row';
-                div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ詩" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
+                div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" maxlength="15" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ詩" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
                 container.appendChild(div);
             });
         }
@@ -701,6 +700,9 @@
             // Binary construction
             const parts = [];
 
+            // Header: Version 1 (0xFF, 0x01)
+            parts.push(new Uint8Array([0xFF, 0x01]));
+
             // 1. Bosses (3 bytes)
             parts.push(new Uint8Array([boss1, boss2, boss3]));
 
@@ -722,16 +724,22 @@
                 parts.push(nameBytes);
 
                 // Jobs
-                const jobIndices = [];
+                const jobBytes = [];
                 for (let c = 0; c < 3; c++) {
                     const jobName = boardState[r][c];
                     if (jobName && jobMap[jobName] !== undefined) {
-                        jobIndices.push(jobMap[jobName]);
+                        let val = jobMap[jobName]; // 0-21
+                        // Add flags
+                        if (player) {
+                            if (player.masterJobs.includes(jobName)) val |= 0x80; // Bit 7: Master
+                            else if (player.lv99Jobs.includes(jobName)) val |= 0x40; // Bit 6: Lv99
+                        }
+                        jobBytes.push(val);
                     } else {
-                        jobIndices.push(255);
+                        jobBytes.push(255); // Empty
                     }
                 }
-                parts.push(new Uint8Array(jobIndices));
+                parts.push(new Uint8Array(jobBytes));
             }
 
             // Combine all parts
