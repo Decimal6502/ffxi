@@ -285,31 +285,52 @@
             if (usedJobs.has(job)) btn.classList.add('used'); if (selectedJob === job) btn.classList.add('selected');
             btn.textContent = JOB_FULLNAMES[job];
             
-            btn.onmousedown = (e) => e.preventDefault(); 
-            btn.ontouchstart = (e) => { if(e.cancelable) e.preventDefault(); }; 
-
-            btn.onclick = () => { 
+            // 処理ロジック
+            const executeAction = () => {
+                // --- 設定画面モード：パレット入力 ---
                 if (document.getElementById('settings').classList.contains('active')) {
                     if (focusedInputId) {
                         const input = document.getElementById(focusedInputId);
                         if (input) {
                             const currentVal = input.value;
                             if (currentVal.includes(job)) {
-                                input.value = currentVal.replace(job, ''); 
+                                input.value = currentVal.replace(job, ''); // 既にあれば削除（トグル）
                             } else {
-                                input.value = currentVal + job; 
+                                input.value = currentVal + job; // なければ追加
                             }
-                            saveSettingsFromDOM(); 
+                            saveSettingsFromDOM(); // 即保存
                         }
                     }
                     return; 
                 }
 
+                // --- 作戦ボードモード：配置選択 ---
                 if(usedJobs.has(job)) return; 
                 selectedJob = (selectedJob === job) ? null : job; 
                 refreshBoard(); 
                 updateDeckMessage();
             };
+
+            // スマホでの反応速度改善: touchstartで即時実行しつつ、preventDefaultでフォーカス外れを防ぐ
+            btn.addEventListener('touchstart', (e) => {
+                if(e.cancelable) e.preventDefault();
+                executeAction();
+            }, {passive: false});
+
+            // マウス操作用
+            btn.addEventListener('mousedown', (e) => {
+                // 設定画面ではフォーカスを維持したいのでpreventDefault
+                if (document.getElementById('settings').classList.contains('active')) {
+                    e.preventDefault(); 
+                }
+            });
+
+            btn.addEventListener('click', (e) => {
+                // touchstartで実行済みの場合はclickイベントは来ないはずだが念のため
+                // マウス操作時はここで実行
+                executeAction();
+            });
+
             btn.draggable = true; btn.ondragstart = (e) => { if(usedJobs.has(job)) { e.preventDefault(); return; } e.dataTransfer.setData("text", job); selectedJob = job; refreshBoard(); };
             container.appendChild(btn);
         });
@@ -343,57 +364,34 @@
         saveBoardState(); refreshBoard();
     }
 
-    // --- Binary Packing URL Generation ---
+    // --- URL Generation (Compressed & Safe) ---
     function generateShareUrl() {
         const bossMap = BOSS_DATA.reduce((acc, b, idx) => { acc[b.name] = idx; return acc; }, {});
         const jobMap = JOBS.reduce((acc, j, idx) => { acc[j] = idx; return acc; }, {});
-
         const boss1 = bossMap[document.getElementById('boss-1')?.value] || 0;
         const boss2 = bossMap[document.getElementById('boss-2')?.value] || 0;
         const boss3 = bossMap[document.getElementById('boss-3')?.value] || 0;
-
-        // バイナリ配列: [Boss1, Boss2, Boss3, Row1..., Row6...]
-        const bytes = [];
-        bytes.push(boss1, boss2, boss3);
-
-        const encoder = new TextEncoder();
-
+        const dataArray = [];
+        dataArray.push([boss1, boss2, boss3]);
         for(let r=0; r<6; r++) {
-            const pIdx = selectedPlayerIndices[r];
-            const player = (pIdx !== -1) ? members[pIdx] : null;
-            
-            // 名前
-            const name = player ? player.name : "";
-            const nameBytes = encoder.encode(name);
-            const nameLen = Math.min(nameBytes.length, 255); // 安全策
-            
-            bytes.push(nameLen);
-            for(let k=0; k<nameLen; k++) bytes.push(nameBytes[k]);
-
-            // ジョブ3つ (255=空)
-            for(let c=0; c<3; c++) {
-                const jName = boardState[r][c];
-                let jIdx = 255;
-                if(jName && jobMap[jName] !== undefined) {
-                    jIdx = jobMap[jName];
-                }
-                bytes.push(jIdx);
-            }
+            const pIdx = selectedPlayerIndices[r]; const player = (pIdx !== -1) ? members[pIdx] : null;
+            if(player) {
+                const j1 = (boardState[r][0] && jobMap[boardState[r][0]] !== undefined) ? jobMap[boardState[r][0]] : null;
+                const j2 = (boardState[r][1] && jobMap[boardState[r][1]] !== undefined) ? jobMap[boardState[r][1]] : null;
+                const j3 = (boardState[r][2] && jobMap[boardState[r][2]] !== undefined) ? jobMap[boardState[r][2]] : null;
+                dataArray.push([player.name, j1, j2, j3]);
+            } else { dataArray.push([]); }
         }
-
-        // Uint8Array -> BinaryString -> Base64 URL Safe
-        const uint8 = new Uint8Array(bytes);
-        let binary = '';
-        for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+        const jsonStr = JSON.stringify(dataArray);
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(jsonStr);
+        let binary = ''; for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         const base64 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        
         const currentPath = window.location.pathname;
         const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
         const viewerUrl = window.location.protocol + "//" + window.location.host + dir + "/viewer.html?s=" + base64;
-        
         document.getElementById('share-url').value = viewerUrl;
     }
-
     function copyShareUrl() { const copyText = document.getElementById("share-url"); if(!copyText.value) return; copyText.select(); navigator.clipboard.writeText(copyText.value).then(() => { alert("URLをコピーしました！"); }); }
 </script>
 </body>
