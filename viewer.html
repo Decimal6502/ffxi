@@ -33,10 +33,17 @@
     <div id="battle-grid"></div>
 
 <script>
-    // ▼ 辞書データの定義を追加 (index.htmlと同期させる必要があります)
     const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
-    // 名前だけあれば復元可能なので名前リストとして定義
-    const BOSS_NAMES = ["Ongo","Xevioso","Arebati","Ngai","Kalunga","Mboze","Bumba","Gogmagog","Aristaeus","Raskovniche","Marmorkrebs","Gigelorum","Procne","Henwen","Sgili","U Bnai","Dealan-dhe","---"];
+    
+    // ▼ 名前だけのリストではなく、弱点情報を含むデータに変更します
+    const BOSS_DATA = [
+        {name:"Ongo",weak:"土/魔"},{name:"Xevioso",weak:"突/クリ"},{name:"Arebati",weak:"突/遠"},
+        {name:"Ngai",weak:"打"},{name:"Kalunga",weak:"斬"},{name:"Mboze",weak:"斬"},
+        {name:"Bumba",weak:"魔/特"},{name:"Gogmagog",weak:"打"},{name:"Aristaeus",weak:"斬"},
+        {name:"Raskovniche",weak:"風/魔"},{name:"Marmorkrebs",weak:"雷/魔"},{name:"Gigelorum",weak:"打"},
+        {name:"Procne",weak:"突"},{name:"Henwen",weak:"打"},{name:"Sgili",weak:"火/魔"},
+        {name:"U Bnai",weak:"火/魔"},{name:"Dealan-dhe",weak:"突"},{name:"---",weak:""}
+    ];
 
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
@@ -69,16 +76,22 @@
             const b2Idx = bytes[offset++] || 0;
             const b3Idx = bytes[offset++] || 0;
 
-            document.getElementById('boss-1').textContent = BOSS_NAMES[b1Idx] || "-";
-            document.getElementById('boss-2').textContent = BOSS_NAMES[b2Idx] || "-";
-            document.getElementById('boss-3').textContent = BOSS_NAMES[b3Idx] || "-";
+            // ▼ インデックスからデータを取り出し、名前と弱点をセットで表示する関数
+            const getBossLabel = (idx) => {
+                const data = BOSS_DATA[idx];
+                if (!data || data.name === "---") return "-";
+                return `${data.name} (${data.weak})`;
+            };
+
+            document.getElementById('boss-1').textContent = getBossLabel(b1Idx);
+            document.getElementById('boss-2').textContent = getBossLabel(b2Idx);
+            document.getElementById('boss-3').textContent = getBossLabel(b3Idx);
 
             // 2. Grid (6行分の読み出し)
             const grid = document.getElementById('battle-grid');
             grid.innerHTML = ''; // クリア
 
             for(let i=0; i<6; i++) {
-                // 安全装置: データが足りなければ終了
                 if(offset >= bytes.length) break;
 
                 // 名前: 長さ(1byte) + 文字列
@@ -93,12 +106,11 @@
                 const jobs = [];
                 for(let j=0; j<3; j++) {
                     const jIdx = bytes[offset++];
-                    // 255は「空」扱い
                     const jobName = (jIdx !== undefined && jIdx !== 255) ? JOBS[jIdx] : null;
                     jobs.push(jobName);
                 }
 
-                // --- 描画処理 (以前と同じHTML構造を生成) ---
+                // 描画
                 const div = document.createElement('div');
                 div.className = 'grid-row';
                 
