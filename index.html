@@ -72,7 +72,7 @@
 
         <div class="share-area">
             <h4 style="margin:0 0 5px 0;">共有用URL発行</h4>
-            <div style="font-size:0.8rem; color:#666;">閲覧専用ページ(viewer.html)のリンクを作成します。<br>※名前と配置情報だけを含む、壊れにくい安全なURLです。</div>
+            <div style="font-size:0.8rem; color:#666;">閲覧専用ページ(viewer.html)のリンクを作成します。<br>※名前と配置情報だけを含む、最短のURLです。</div>
             <div class="share-input-group">
                 <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
                 <button class="btn-action btn-copy" onclick="copyShareUrl()">コピー</button>
@@ -103,7 +103,7 @@
         loadSettings();
         loadBoardState();
         initBoardUI();
-        renderDeck();
+        // renderDeck(); <- 削除: usedJobsが未定義でエラーになるのと、switchTabで再描画されるため不要
         switchTab('board');
     };
 
@@ -235,7 +235,8 @@
         }
         renderDeck(usedJobs);
     }
-    function renderDeck(usedJobs) {
+    // Set default value for usedJobs to handle calls without arguments
+    function renderDeck(usedJobs = new Set()) {
         const container = document.getElementById('deck-grid'); container.innerHTML = ''; const msg = document.getElementById('deck-message');
         if (!selectedJob) { msg.textContent = "ジョブを選択してください"; msg.style.color = "#007bff"; } else { msg.textContent = `「${JOB_FULLNAMES[selectedJob]}」を選択中...`; msg.style.color = "#d9534f"; }
         JOBS.forEach(job => {
@@ -282,8 +283,7 @@
         const boss2 = document.getElementById('boss-2')?.value;
         const boss3 = document.getElementById('boss-3')?.value;
 
-        // データ構造を配列の配列に極小化: [ [Bosses], [Row1], [Row2]... ]
-        // Row = [Name, Job1, Job2, Job3]
+        // データ構造を配列の配列に極小化: [ [Bosses], [Name,J1,J2,J3], ... ]
         const dataArray = [];
         dataArray.push([boss1, boss2, boss3]);
 
@@ -291,6 +291,7 @@
             const pIdx = selectedPlayerIndices[r];
             const player = (pIdx !== -1) ? members[pIdx] : null;
             if(player) {
+                // ["Taro", "戦", "白", "吟"]
                 dataArray.push([player.name, boardState[r][0], boardState[r][1], boardState[r][2]]);
             } else {
                 dataArray.push([]); // 空行
@@ -309,7 +310,7 @@
             binary += String.fromCharCode(bytes[i]);
         }
         
-        // Base64化して、URLで問題になる文字を置換 (+ -> -, / -> _, =削除)
+        // Base64化して、URL Safeに置換
         const base64 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         
         const currentPath = window.location.pathname;
