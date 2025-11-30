@@ -88,8 +88,8 @@
     </div>
 
 <script>
-    const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
-    const JOB_FULLNAMES = {'戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ','ナ':'ナイト','暗':'暗黒','獣':'獣使','吟':'吟遊','狩':'狩人','侍':'侍','忍':'忍者','竜':'竜騎','召':'召喚','青':'青魔','コ':'コル','か':'から','踊':'踊り','学':'学者','風':'風水','剣':'剣'};
+    const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','詩','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
+    const JOB_FULLNAMES = {'戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ','ナ':'ナイト','暗':'暗黒','獣':'獣使','詩':'詩人','狩':'狩人','侍':'侍','忍':'忍者','竜':'竜騎','召':'召喚','青':'青魔','コ':'コル','か':'から','踊':'踊り','学':'学者','風':'風水','剣':'剣'};
     const BOSS_DATA = [{name:"Ongo",weak:"土/魔"},{name:"Xevioso",weak:"突/クリ"},{name:"Arebati",weak:"突/遠"},{name:"Ngai",weak:"打"},{name:"Kalunga",weak:"斬"},{name:"Mboze",weak:"斬"},{name:"Bumba",weak:"魔/特"},{name:"Gogmagog",weak:"打"},{name:"Aristaeus",weak:"斬"},{name:"Raskovniche",weak:"風/魔"},{name:"Marmorkrebs",weak:"雷/魔"},{name:"Gigelorum",weak:"打"},{name:"Procne",weak:"突"},{name:"Henwen",weak:"打"},{name:"Sgili",weak:"火/魔"},{name:"U Bnai",weak:"火/魔"},{name:"Dealan-dhe",weak:"突"},{name:"---",weak:""}];
 
     let members = []; 
@@ -141,7 +141,15 @@
         localStorage.setItem(KEY_BOARD, JSON.stringify({ board: boardState, players: selectedPlayerIndices, bosses: [boss1, boss2, boss3] }));
     }
 
-    function parseJobString(str) { if(!str) return []; if(str.includes('全')) return [...JOBS]; return JOBS.filter(j => str.includes(j)); }
+    function parseJobString(str) { 
+        if(!str) return []; 
+        
+        // ▼ 入力ゆらぎ吸収: 「吟」と入力されたら「詩」に変換して扱う
+        str = str.replace(/吟/g, '詩');
+        
+        if(str.includes('全')) return [...JOBS]; 
+        return JOBS.filter(j => str.includes(j)); 
+    }
     function saveSettingsFromDOM() {
         const rows = document.getElementById('settings-list').children;
         if (rows.length === 0 && members.length > 0) return;
@@ -164,7 +172,7 @@
         const container = document.getElementById('settings-list'); container.innerHTML = '';
         members.forEach((m, idx) => {
             const div = document.createElement('div'); div.className = 'member-row';
-            div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ吟" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
+            div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ暗詩" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
             container.appendChild(div);
         });
     }
