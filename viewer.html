@@ -5,27 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gaol Tactician (Viewer)</title>
     <style>
-        :root {
-            --bg: #f4f4f9; --border: #ddd;
-        }
+        :root { --bg: #f4f4f9; --border: #ddd; }
         body { font-family: sans-serif; margin: 0; padding: 20px 10px; background: var(--bg); }
-        
         .alert-box { background: #e2e6ea; padding: 10px; text-align: center; border-radius: 5px; margin-bottom: 20px; font-size: 0.9rem; border:1px solid #ccc; }
-        
         .boss-header { display: grid; grid-template-columns: 100px 1fr 1fr 1fr; gap: 4px; margin-bottom: 5px; text-align: center; font-size: 0.85em; font-weight: bold; color: #555;}
         .boss-name { background: #fff; border: 1px solid #999; border-radius: 4px; padding: 5px; }
-
         .grid-row { display: grid; grid-template-columns: 100px 1fr 1fr 1fr; gap: 4px; margin-bottom: 6px; min-height: 50px; }
-        
         .p-name-box { display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border); padding: 5px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; word-break: break-all; }
-
         .job-slot { background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; }
         .job-slot.has-job { background-color: #fff; border: 2px solid #555; color: #333; }
-
-        @media (max-width: 400px) {
-            .grid-row, .boss-header { grid-template-columns: 80px 1fr 1fr 1fr; }
-            .job-slot { font-size: 0.9rem; }
-        }
+        @media (max-width: 400px) { .grid-row, .boss-header { grid-template-columns: 80px 1fr 1fr 1fr; } .job-slot { font-size: 0.9rem; } }
     </style>
 </head>
 <body>
@@ -44,10 +33,6 @@
     <div id="battle-grid"></div>
 
 <script>
-    function b64_to_utf8(str) {
-        return decodeURIComponent(escape(window.atob(str)));
-    }
-
     window.onload = function() {
         const params = new URLSearchParams(window.location.search);
         const sharedData = params.get('s');
@@ -58,37 +43,51 @@
         }
     };
 
-    function renderFromUrl(base64) {
+    function renderFromUrl(base64url) {
         try {
-            const jsonStr = b64_to_utf8(base64);
-            const data = JSON.parse(jsonStr);
-
-            // ボス名
-            if(data.b) {
-                document.getElementById('boss-1').textContent = data.b[0] || "-";
-                document.getElementById('boss-2').textContent = data.b[1] || "-";
-                document.getElementById('boss-3').textContent = data.b[2] || "-";
+            // URL Safe Base64 -> Standard Base64
+            let str = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) str += '=';
+            
+            // Binary string
+            const binary = atob(str);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
             }
+            
+            // UTF-8 Decode
+            const decoder = new TextDecoder();
+            const jsonStr = decoder.decode(bytes);
+            const dataArray = JSON.parse(jsonStr);
 
+            // Data Structure: [ [Boss1,Boss2,Boss3], [Name,J1,J2,J3], [Name...], ... ]
+            
+            // 1. Bosses
+            const bosses = dataArray[0] || [];
+            document.getElementById('boss-1').textContent = bosses[0] || "-";
+            document.getElementById('boss-2').textContent = bosses[1] || "-";
+            document.getElementById('boss-3').textContent = bosses[2] || "-";
+
+            // 2. Grid (Indices 1 to 6)
             const grid = document.getElementById('battle-grid');
-            const rows = data.r || [];
-
-            rows.forEach(row => {
+            
+            // データの行数分ループ（最大6人分）
+            for(let i=1; i<dataArray.length; i++) {
+                const row = dataArray[i];
                 const div = document.createElement('div');
                 div.className = 'grid-row';
 
-                if (row && Array.isArray(row)) {
-                    // row = ["Name", "Job1", "Job2", "Job3"]
+                if (row && row.length > 0) {
+                    // [Name, Job1, Job2, Job3]
                     const name = row[0];
                     const jobs = [row[1], row[2], row[3]];
 
-                    // 名前
                     const nameDiv = document.createElement('div');
                     nameDiv.className = 'p-name-box';
                     nameDiv.textContent = name;
                     div.appendChild(nameDiv);
 
-                    // 3戦分
                     jobs.forEach(job => {
                         const slot = document.createElement('div');
                         slot.className = 'job-slot';
@@ -99,15 +98,15 @@
                         div.appendChild(slot);
                     });
                 } else {
-                    // 空行
+                    // Empty row
                     div.innerHTML = `<div class="p-name-box">-</div><div class="job-slot"></div><div class="job-slot"></div><div class="job-slot"></div>`;
                 }
                 grid.appendChild(div);
-            });
+            }
 
         } catch(e) {
             console.error(e);
-            alert("データの読み込みに失敗しました。\nURLが壊れている可能性があります。");
+            alert("データの読み込みに失敗しました。\nURLが正しくない可能性があります。");
         }
     }
 </script>
