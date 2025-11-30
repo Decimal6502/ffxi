@@ -3,19 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gaol Tactician Eta</title>
+    <title>Gaol Tactician (Editor)</title>
     <style>
+        /* スタイルは共通ですが、編集機能に必要なものだけ残しています */
         :root {
-            --primary: #007bff;
-            --success: #28a745;
-            --info: #17a2b8;
-            --master-bg: #fff3cd; --master-border: #ffc107;
-            --lv99-bg: #e2e6ea;   --lv99-border: #adb5bd;
+            --primary: #007bff; --success: #28a745; --info: #17a2b8; --danger: #dc3545;
+            --master-bg: #fff3cd; --master-border: #ffc107; --lv99-bg: #e2e6ea; --lv99-border: #adb5bd;
             --bg: #f4f4f9; --border: #ddd;
         }
         body { font-family: sans-serif; margin: 0; padding: 0; background: var(--bg); touch-action: manipulation; padding-bottom: 250px; }
         
-        /* タブ */
         .tabs { display: flex; background: #333; color: white; position: sticky; top: 0; z-index: 1000; }
         .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-bottom: 4px solid transparent; font-size: 0.9rem;}
         .tab.active { border-bottom: 4px solid var(--primary); font-weight: bold; background: #444; }
@@ -23,82 +20,44 @@
         .content { display: none; padding: 10px; max-width: 800px; margin: 0 auto; }
         .content.active { display: block; }
         
-        /* ボタン共通 */
         .btn-action { padding: 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; color: white; text-align: center;}
         .btn-add { background: var(--success); width: 100%; margin-top: 10px; font-size: 16px; }
         .btn-auto { background: var(--info); width: 100%; margin-bottom: 15px; font-size: 1rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-copy { background: #6c757d; width: 80px; margin-left: 5px;}
-        .del-row { background: #dc3545; height: 100%; padding: 0 15px; }
+        .del-row { background: var(--danger); height: 100%; padding: 0 15px; }
 
-        /* 設定画面 */
-        .member-row { 
-            background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border);
-            display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center;
-        }
+        .member-row { background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border); display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center; }
         .inputs-col { display: flex; flex-direction: column; gap: 5px; }
         .member-row input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box;}
         .job-label { font-size: 0.7rem; color: #666; margin-bottom: 1px; }
 
-        /* 作戦ボード */
-        .boss-header { 
-            display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; 
-            margin-bottom: 5px; text-align: center; font-size: 0.85em; 
-            position: sticky; top: 48px; background: var(--bg); z-index: 900; padding: 5px 0;
-        }
+        .boss-header { display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; margin-bottom: 5px; text-align: center; font-size: 0.85em; position: sticky; top: 48px; background: var(--bg); z-index: 900; padding: 5px 0; }
         .boss-select { width: 100%; padding: 4px; font-size: 0.8rem; border: 1px solid #999; border-radius: 4px;}
 
         .grid-row { display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; margin-bottom: 6px; min-height: 60px; }
-        
         .player-col { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
         .player-select { width: 100%; padding: 4px; font-size: 0.85rem; background: white; border: 1px solid var(--border); height: 30px;}
         
-        .player-jobs-preview { 
-            font-size: 0.75rem; color: #444; background: #e9ecef; 
-            padding: 3px 5px; border-radius: 3px; line-height: 1.3;
-            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
-            height: auto; min-height: 2.6em; 
-        }
-        .job-star { font-weight: bold; color: #d39e00; } 
-        .job-norm { color: #555; font-size: 0.95em; }
+        .player-jobs-preview { font-size: 0.75rem; color: #444; background: #e9ecef; padding: 3px 5px; border-radius: 3px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; height: auto; min-height: 2.6em; }
+        .job-star { font-weight: bold; color: #d39e00; } .job-norm { color: #555; font-size: 0.95em; }
 
-        .job-slot {
-            background: white; border: 1px solid #ccc; border-radius: 4px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 1.2rem; cursor: pointer;
-            position: relative; transition: background 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
+        .job-slot { background: white; border: 1px solid #ccc; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; cursor: pointer; position: relative; transition: background 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .job-slot.disabled { background-color: #f8f9fa; border-color: #eee; cursor: not-allowed; opacity: 0.6; }
         .job-slot.target-master { background-color: var(--master-bg); border: 2px solid var(--master-border); animation: pulse-gold 1.5s infinite; }
         .job-slot.target-lv99 { background-color: var(--lv99-bg); border: 2px solid var(--lv99-border); }
         .job-slot.has-job { background-color: #fff; border: 2px solid #555; color: #333; }
         .slot-mark-master { position: absolute; top: 0; right: 2px; color: #ffc107; font-size: 0.7rem; }
 
-        /* 共有エリア */
-        .share-area {
-            margin-top: 30px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ccc;
-        }
+        .share-area { margin-top: 30px; padding: 15px; background: #fff; border-radius: 8px; border: 1px solid #ccc; }
         .share-input-group { display: flex; gap: 5px; margin-top: 5px; }
         .share-url-box { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; color: #555; }
 
-        @keyframes pulse-gold {
-            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
-            70% { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-        }
+        @keyframes pulse-gold { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
 
-        .deck-container {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: #fff; border-top: 2px solid #ccc; padding: 8px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 2000;
-        }
+        .deck-container { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid #ccc; padding: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 2000; }
         .deck-info { font-size: 0.8rem; color: #007bff; margin-bottom: 5px; text-align: center; font-weight: bold; height: 1.2em;}
         .deck-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
-        
-        .job-chip {
-            padding: 8px 10px; background: #fff; border: 1px solid #999; border-radius: 4px;
-            font-size: 0.9rem; cursor: pointer; user-select: none; font-weight: bold;
-        }
+        .job-chip { padding: 8px 10px; background: #fff; border: 1px solid #999; border-radius: 4px; font-size: 0.9rem; cursor: pointer; user-select: none; font-weight: bold; }
         .job-chip.selected { background: var(--primary); color: white; transform: translateY(-2px); border-color: var(--primary); }
         .job-chip.used { background: #666; color: #ccc; border-color: #444; opacity: 0.5; }
 
@@ -111,7 +70,6 @@
     </style>
 </head>
 <body>
-
     <div class="tabs">
         <div class="tab active" onclick="switchTab('board')">作戦ボード</div>
         <div class="tab" onclick="switchTab('settings')">メンバー設定</div>
@@ -119,10 +77,6 @@
 
     <div id="settings" class="content">
         <h3>メンバー登録</h3>
-        <p style="font-size:0.8rem; color:#666;">
-            ★マスター済みとLv99(その他)を分けて入力できます。<br>
-            ※重複した場合はマスターが優先されます。
-        </p>
         <div id="settings-list"></div>
         <button class="btn-action btn-add" onclick="addMemberRow()">＋ メンバーを追加</button>
     </div>
@@ -139,8 +93,11 @@
         <div id="battle-grid"></div>
 
         <div class="share-area">
-            <h4 style="margin:0 0 5px 0;">共有用URL</h4>
-            <div style="font-size:0.8rem; color:#666;">現在の設定（メンバー・配置）をURLにして共有できます。</div>
+            <h4 style="margin:0 0 5px 0;">共有用URL発行</h4>
+            <div style="font-size:0.8rem; color:#666;">
+                閲覧専用ページ(viewer.html)のリンクを作成します。<br>
+                メンバーリスト全体は含まれず、このボードの6人分のデータのみが含まれます。
+            </div>
             <div class="share-input-group">
                 <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
                 <button class="btn-action btn-copy" onclick="copyShareUrl()">コピー</button>
@@ -158,21 +115,13 @@
 <script>
     // --- データ定数 ---
     const JOBS = ['戦','モ','白','黒','赤','シ','ナ','暗','獣','吟','狩','侍','忍','竜','召','青','コ','か','踊','学','風','剣'];
-    const JOB_FULLNAMES = {
-        '戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ',
-        'ナ':'ナイト','暗':'暗黒','獣':'獣使','吟':'吟遊','狩':'狩人','侍':'侍',
-        '忍':'忍者','竜':'竜騎','召':'召喚','青':'青魔','コ':'コル','か':'から','踊':'踊り','学':'学者','風':'風水','剣':'剣'
-    };
+    const JOB_FULLNAMES = {'戦':'戦士','モ':'モンク','白':'白魔','黒':'黒魔','赤':'赤魔','シ':'シーフ','ナ':'ナイト','暗':'暗黒','獣':'獣使','吟':'吟遊','狩':'狩人','侍':'侍','忍':'忍者','竜':'竜騎','召':'召喚','青':'青魔','コ':'コル','か':'から','踊':'踊り','学':'学者','風':'風水','剣':'剣'};
     const BOSS_DATA = [
-        {name: "Ongo", weak: "土/魔"}, {name: "Xevioso", weak: "突/クリ"}, {name: "Arebati", weak: "突/遠"},
-        {name: "Ngai", weak: "打"}, {name: "Kalunga", weak: "斬"}, {name: "Mboze", weak: "斬"},
-        {name: "Bumba", weak: "魔/特"}, {name: "Gogmagog", weak: "打"}, {name: "Aristaeus", weak: "斬"},
-        {name: "Raskovniche", weak: "風/魔"}, {name: "Marmorkrebs", weak: "雷/魔"}, {name: "Gigelorum", weak: "打"},
-        {name: "Procne", weak: "突"}, {name: "Henwen", weak: "打"}, {name: "Sgili", weak: "火/魔"},
-        {name: "U Bnai", weak: "火/魔"}, {name: "Dealan-dhe", weak: "突"}, {name: "---", weak: ""}
+        {name: "Ongo", weak: "土/魔"}, {name: "Xevioso", weak: "突/クリ"}, {name: "Arebati", weak: "突/遠"}, {name: "Ngai", weak: "打"}, {name: "Kalunga", weak: "斬"}, {name: "Mboze", weak: "斬"},
+        {name: "Bumba", weak: "魔/特"}, {name: "Gogmagog", weak: "打"}, {name: "Aristaeus", weak: "斬"}, {name: "Raskovniche", weak: "風/魔"}, {name: "Marmorkrebs", weak: "雷/魔"}, {name: "Gigelorum", weak: "打"},
+        {name: "Procne", weak: "突"}, {name: "Henwen", weak: "打"}, {name: "Sgili", weak: "火/魔"}, {name: "U Bnai", weak: "火/魔"}, {name: "Dealan-dhe", weak: "突"}, {name: "---", weak: ""}
     ];
 
-    // --- State ---
     let members = []; 
     const KEY_MEMBERS = 'gt_members_v2';
     const KEY_BOARD = 'gt_board_state';
@@ -180,31 +129,18 @@
     let selectedPlayerIndices = [-1, -1, -1, -1, -1, -1];
     let selectedJob = null; 
 
-    // --- Init ---
     window.onload = function() {
-        // URLパラメータがあるかチェック
-        const params = new URLSearchParams(window.location.search);
-        const sharedData = params.get('data');
-
-        if (sharedData) {
-            loadFromUrl(sharedData);
-        } else {
-            loadSettings();
-            loadBoardState();
-            initBoardUI();
-        }
-        
+        loadSettings();
+        loadBoardState();
+        initBoardUI();
         renderDeck();
         switchTab('board');
     };
 
     function switchTab(tabName) {
-        if(document.getElementById('settings').classList.contains('active')) {
-            saveSettingsFromDOM(); 
-        }
+        if(document.getElementById('settings').classList.contains('active')) saveSettingsFromDOM(); 
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-        
         if(tabName === 'settings') {
             document.querySelector('.tab:nth-child(2)').classList.add('active');
             document.getElementById('settings').classList.add('active');
@@ -231,11 +167,7 @@
             if(state.bosses) {
                 setTimeout(() => { 
                     const b1 = document.getElementById('boss-1');
-                    if(b1) {
-                        b1.value = state.bosses[0];
-                        document.getElementById('boss-2').value = state.bosses[1];
-                        document.getElementById('boss-3').value = state.bosses[2];
-                    }
+                    if(b1) { b1.value = state.bosses[0]; document.getElementById('boss-2').value = state.bosses[1]; document.getElementById('boss-3').value = state.bosses[2]; }
                 }, 0);
             }
         }
@@ -249,7 +181,7 @@
         localStorage.setItem(KEY_BOARD, JSON.stringify(state));
     }
 
-    // --- Settings Logic ---
+    // --- Settings ---
     function parseJobString(str) {
         if(!str) return [];
         if(str.includes('全')) return [...JOBS];
@@ -305,21 +237,15 @@
         saveSettingsFromDOM(); 
         members.splice(targetIdx, 1);
         localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
-
         for(let r=0; r<6; r++) {
             const currentP = selectedPlayerIndices[r];
-            if (currentP === targetIdx) {
-                selectedPlayerIndices[r] = -1;
-                boardState[r] = [null, null, null];
-            } else if (currentP > targetIdx) {
-                selectedPlayerIndices[r] = currentP - 1;
-            }
+            if (currentP === targetIdx) { selectedPlayerIndices[r] = -1; boardState[r] = [null, null, null]; } 
+            else if (currentP > targetIdx) { selectedPlayerIndices[r] = currentP - 1; }
         }
-        saveBoardState(); 
-        renderSettingsList();
+        saveBoardState(); renderSettingsList();
     }
 
-    // --- Board Logic ---
+    // --- Board ---
     function initBoardUI() {
         const selects = document.querySelectorAll('.boss-select');
         selects.forEach((sel, i) => {
@@ -334,10 +260,7 @@
             rowDiv.className = 'grid-row';
             const pCol = document.createElement('div'); pCol.className = 'player-col';
             const pSel = document.createElement('select'); pSel.className = 'player-select';
-            pSel.onchange = (e) => { 
-                selectedPlayerIndices[r] = parseInt(e.target.value); 
-                validateRowJobs(r); saveBoardState(); refreshBoard(); 
-            };
+            pSel.onchange = (e) => { selectedPlayerIndices[r] = parseInt(e.target.value); validateRowJobs(r); saveBoardState(); refreshBoard(); };
             pCol.appendChild(pSel);
             const pJobs = document.createElement('div'); pJobs.className = 'player-jobs-preview'; pJobs.id = `player-jobs-${r}`;
             pCol.appendChild(pJobs);
@@ -397,9 +320,7 @@
                     const isMaster = player.masterJobs.includes(selectedJob);
                     const isLv99 = player.lv99Jobs.includes(selectedJob);
                     if ((!isMaster && !isLv99) || isGlobalUsed) slot.classList.add('disabled');
-                    else {
-                        if(isMaster) slot.classList.add('target-master'); else if(isLv99) slot.classList.add('target-lv99');
-                    }
+                    else { if(isMaster) slot.classList.add('target-master'); else if(isLv99) slot.classList.add('target-lv99'); }
                 }
             }
         }
@@ -416,15 +337,9 @@
             if (usedJobs.has(job)) btn.classList.add('used');
             if (selectedJob === job) btn.classList.add('selected');
             btn.textContent = JOB_FULLNAMES[job];
-            btn.onclick = () => {
-                if(usedJobs.has(job)) return;
-                selectedJob = (selectedJob === job) ? null : job; refreshBoard();
-            };
+            btn.onclick = () => { if(usedJobs.has(job)) return; selectedJob = (selectedJob === job) ? null : job; refreshBoard(); };
             btn.draggable = true;
-            btn.ondragstart = (e) => {
-                if(usedJobs.has(job)) { e.preventDefault(); return; }
-                e.dataTransfer.setData("text", job); selectedJob = job; refreshBoard();
-            };
+            btn.ondragstart = (e) => { if(usedJobs.has(job)) { e.preventDefault(); return; } e.dataTransfer.setData("text", job); selectedJob = job; refreshBoard(); };
             container.appendChild(btn);
         });
     }
@@ -457,52 +372,26 @@
         }
     }
 
-    // --- Auto Fill Feature ---
     function autoFillBoard() {
-        if(!confirm("空いている枠を自動で埋めますか？\n（マスター済みを優先して、ランダムに決定します）")) return;
-
-        // 現在の使用状況を取得
+        if(!confirm("空いている枠を自動で埋めますか？")) return;
         const usedJobs = new Set();
         boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
-
-        // 空きスロットをリストアップ
         const emptySlots = [];
         for(let r=0; r<6; r++) {
-            if(selectedPlayerIndices[r] === -1) continue; // プレイヤー未選択行は無視
-            for(let c=0; c<3; c++) {
-                if(!boardState[r][c]) emptySlots.push({r, c});
-            }
+            if(selectedPlayerIndices[r] === -1) continue;
+            for(let c=0; c<3; c++) { if(!boardState[r][c]) emptySlots.push({r, c}); }
         }
-
-        // ランダム順にする（偏りを防ぐ）
         shuffleArray(emptySlots);
-
         emptySlots.forEach(slot => {
-            const pIdx = selectedPlayerIndices[slot.r];
-            const player = members[pIdx];
-            
-            // 候補ジョブ: (Master + Lv99) から Used を引く
-            // 優先度: Master > Lv99
-            
+            const player = members[selectedPlayerIndices[slot.r]];
             const validMaster = player.masterJobs.filter(j => !usedJobs.has(j));
             const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
-
             let pick = null;
-
-            if (validMaster.length > 0) {
-                pick = validMaster[Math.floor(Math.random() * validMaster.length)];
-            } else if (validLv99.length > 0) {
-                pick = validLv99[Math.floor(Math.random() * validLv99.length)];
-            }
-
-            if (pick) {
-                boardState[slot.r][slot.c] = pick;
-                usedJobs.add(pick); // 即座に使用済みに登録
-            }
+            if (validMaster.length > 0) pick = validMaster[Math.floor(Math.random() * validMaster.length)];
+            else if (validLv99.length > 0) pick = validLv99[Math.floor(Math.random() * validLv99.length)];
+            if (pick) { boardState[slot.r][slot.c] = pick; usedJobs.add(pick); }
         });
-
-        saveBoardState();
-        refreshBoard();
+        saveBoardState(); refreshBoard();
     }
 
     function shuffleArray(array) {
@@ -512,72 +401,47 @@
         }
     }
 
-    // --- Sharing Feature ---
+    // --- URL Generation (To viewer.html) ---
     function generateShareUrl() {
         const boss1 = document.getElementById('boss-1')?.value;
         const boss2 = document.getElementById('boss-2')?.value;
         const boss3 = document.getElementById('boss-3')?.value;
 
-        // 共有データオブジェクト
-        const dataObj = {
-            m: members,
-            p: selectedPlayerIndices,
-            b: boardState,
-            bo: [boss1, boss2, boss3]
-        };
-
-        // Base64エンコード (日本語対応ハック)
+        // 6行分のデータ抽出
+        const rows = [];
+        for(let r=0; r<6; r++) {
+            const pIdx = selectedPlayerIndices[r];
+            const player = (pIdx !== -1) ? members[pIdx] : null;
+            if(player) {
+                rows.push({
+                    n: player.name,
+                    m: player.masterJobs,
+                    l: player.lv99Jobs,
+                    s: boardState[r] 
+                });
+            } else {
+                rows.push(null);
+            }
+        }
+        const dataObj = { bo: [boss1, boss2, boss3], r: rows };
         const jsonStr = JSON.stringify(dataObj);
         const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
         
-        // URL生成
-        const url = window.location.protocol + "//" + window.location.host + window.location.pathname + "?data=" + base64;
+        // 自分のURLから viewer.html へのパスを作る
+        // 例: https://user.github.io/repo/index.html -> https://user.github.io/repo/viewer.html
+        const currentPath = window.location.pathname;
+        const dir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const viewerUrl = window.location.protocol + "//" + window.location.host + dir + "/viewer.html?s=" + base64;
         
-        document.getElementById('share-url').value = url;
+        document.getElementById('share-url').value = viewerUrl;
     }
 
     function copyShareUrl() {
         const copyText = document.getElementById("share-url");
         if(!copyText.value) return;
         copyText.select();
-        copyText.setSelectionRange(0, 99999); 
-        navigator.clipboard.writeText(copyText.value).then(() => {
-            alert("URLをコピーしました！");
-        }, () => {
-            alert("コピーに失敗しました");
-        });
+        navigator.clipboard.writeText(copyText.value).then(() => { alert("URLをコピーしました！"); });
     }
-
-    function loadFromUrl(base64) {
-        try {
-            // 日本語デコード対応
-            const jsonStr = decodeURIComponent(escape(atob(base64)));
-            const data = JSON.parse(jsonStr);
-
-            if(confirm("共有されたデータを開きますか？\n\n注意：現在の作戦ボードの内容は上書きされます。\n(保存したい場合はキャンセルして、一度設定画面を確認してください)")) {
-                // データ適用
-                if(data.m) {
-                    members = data.m;
-                    localStorage.setItem(KEY_MEMBERS, JSON.stringify(members));
-                }
-                if(data.b) boardState = data.b;
-                if(data.p) selectedPlayerIndices = data.p;
-                
-                // ボス情報はDOMロード後に適用するため一旦保存
-                if(data.bo) {
-                    const tempState = { board: boardState, players: selectedPlayerIndices, bosses: data.bo };
-                    localStorage.setItem(KEY_BOARD, JSON.stringify(tempState));
-                }
-                
-                // URLパラメータを消してリロード（クリーンなURLにする）
-                window.location.href = window.location.pathname;
-            }
-        } catch(e) {
-            console.error(e);
-            alert("データの読み込みに失敗しました。\nURLが壊れている可能性があります。");
-        }
-    }
-
 </script>
 </body>
 </html>
