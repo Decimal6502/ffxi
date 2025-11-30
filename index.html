@@ -20,6 +20,9 @@
         .member-row { background: white; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border); display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center; }
         .inputs-col { display: flex; flex-direction: column; gap: 5px; }
         .member-row input { padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; width: 100%; box-sizing: border-box;}
+        /* フォーカス時の強調 */
+        .member-row input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(0,123,255,0.25); background-color: #fff8e1; }
+        
         .job-label { font-size: 0.7rem; color: #666; margin-bottom: 1px; }
         .boss-header { display: grid; grid-template-columns: 135px 1fr 1fr 1fr; gap: 4px; margin-bottom: 5px; text-align: center; font-size: 0.85em; position: sticky; top: 48px; background: var(--bg); z-index: 900; padding: 5px 0; }
         .boss-select { width: 100%; padding: 4px; font-size: 0.8rem; border: 1px solid #999; border-radius: 4px;}
@@ -55,7 +58,9 @@
 
     <div id="settings" class="content">
         <h3>メンバー登録</h3>
-        <h5>ジョブの略称を入力してください。<br>「・」や「、」など略称以外の文字は無視します。<br>詩人は「詩/吟」の両方を受け付けます。<br>「全」と記述された場合、すべてのジョブを対象とします。</h5>
+        <p style="font-size:0.8rem; color:#666;">
+            入力欄をタップして選択状態にし、画面下部のジョブボタンを押すと簡単に入力・削除ができます。
+        </p>
         <div id="settings-list"></div>
         <button class="btn-action btn-add" onclick="addMemberRow()">＋ メンバーを追加</button>
     </div>
@@ -72,8 +77,11 @@
         <div id="battle-grid"></div>
 
         <div class="share-area">
-            <h4 style="margin:0 0 5px 0;">共有用URL発行</h4>
-            <div style="font-size:0.8rem; color:#666;">閲覧専用ページ(viewer.html)のリンクを作成します。</div>
+            <h4 style="margin:0 0 5px 0;">共有用URL発行 (Mu版)</h4>
+            <div style="font-size:0.8rem; color:#666;">
+                データをバイナリ圧縮してURLを生成します。<br>
+                ※文字化けに強く、URLが非常に短くなります。
+            </div>
             <div class="share-input-group">
                 <input type="text" id="share-url" class="share-url-box" readonly onclick="this.select()">
                 <button class="btn-action btn-copy" onclick="copyShareUrl()">コピー</button>
@@ -99,17 +107,21 @@
     let boardState = Array(6).fill(null).map(() => [null, null, null]);
     let selectedPlayerIndices = [-1, -1, -1, -1, -1, -1];
     let selectedJob = null; 
+    let focusedInputId = null;
 
     window.onload = function() {
         loadSettings();
         loadBoardState();
         initBoardUI();
-        // renderDeck(); <- 削除: usedJobsが未定義でエラーになるのと、switchTabで再描画されるため不要
         switchTab('board');
     };
 
     function switchTab(tabName) {
         if(document.getElementById('settings').classList.contains('active')) saveSettingsFromDOM(); 
+        
+        focusedInputId = null;
+        updateDeckMessage();
+
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
         if(tabName === 'settings') {
@@ -120,6 +132,30 @@
             document.querySelector('.tab:nth-child(1)').classList.add('active');
             document.getElementById('board').classList.add('active');
             refreshBoard();
+        }
+        updateDeckMessage();
+    }
+
+    function setFocusedInput(id) {
+        focusedInputId = id;
+        updateDeckMessage();
+    }
+
+    function updateDeckMessage() {
+        const msg = document.getElementById('deck-message');
+        const isSettings = document.getElementById('settings').classList.contains('active');
+        
+        if (isSettings) {
+            msg.textContent = "👆入力欄を選択し、下のボタンで追加/削除";
+            msg.style.color = "#28a745";
+        } else {
+            if (!selectedJob) { 
+                msg.textContent = "ジョブを選択してください"; 
+                msg.style.color = "#007bff"; 
+            } else { 
+                msg.textContent = `「${JOB_FULLNAMES[selectedJob]}」を選択中...`; 
+                msg.style.color = "#d9534f"; 
+            }
         }
     }
 
@@ -144,10 +180,7 @@
 
     function parseJobString(str) { 
         if(!str) return []; 
-        
-        // ▼ 入力ゆらぎ吸収: 「吟」と入力されたら「詩」に変換して扱う
         str = str.replace(/吟/g, '詩');
-        
         if(str.includes('全')) return [...JOBS]; 
         return JOBS.filter(j => str.includes(j)); 
     }
@@ -173,7 +206,7 @@
         const container = document.getElementById('settings-list'); container.innerHTML = '';
         members.forEach((m, idx) => {
             const div = document.createElement('div'); div.className = 'member-row';
-            div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ暗詩" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
+            div.innerHTML = `<div><input type="text" value="${m.name}" id="name-${idx}" placeholder="名前" onchange="saveSettingsFromDOM()"></div><div class="inputs-col"><div><div class="job-label">★マスター</div><input type="text" value="${m.masterStr || ''}" id="master-${idx}" placeholder="例: 戦モ白" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div><div><div class="job-label">Lv99</div><input type="text" value="${m.lv99Str || ''}" id="lv99-${idx}" placeholder="例: シ詩" onfocus="setFocusedInput(this.id)" onchange="saveSettingsFromDOM()"></div></div><button class="btn-action del-row" onclick="deleteMember(${idx})">×</button>`;
             container.appendChild(div);
         });
     }
@@ -244,15 +277,39 @@
         }
         renderDeck(usedJobs);
     }
-    // Set default value for usedJobs to handle calls without arguments
+    
     function renderDeck(usedJobs = new Set()) {
-        const container = document.getElementById('deck-grid'); container.innerHTML = ''; const msg = document.getElementById('deck-message');
-        if (!selectedJob) { msg.textContent = "ジョブを選択してください"; msg.style.color = "#007bff"; } else { msg.textContent = `「${JOB_FULLNAMES[selectedJob]}」を選択中...`; msg.style.color = "#d9534f"; }
+        const container = document.getElementById('deck-grid'); container.innerHTML = '';
         JOBS.forEach(job => {
             const btn = document.createElement('div'); btn.className = 'job-chip';
             if (usedJobs.has(job)) btn.classList.add('used'); if (selectedJob === job) btn.classList.add('selected');
             btn.textContent = JOB_FULLNAMES[job];
-            btn.onclick = () => { if(usedJobs.has(job)) return; selectedJob = (selectedJob === job) ? null : job; refreshBoard(); };
+            
+            btn.onmousedown = (e) => e.preventDefault(); 
+            btn.ontouchstart = (e) => { if(e.cancelable) e.preventDefault(); }; 
+
+            btn.onclick = () => { 
+                if (document.getElementById('settings').classList.contains('active')) {
+                    if (focusedInputId) {
+                        const input = document.getElementById(focusedInputId);
+                        if (input) {
+                            const currentVal = input.value;
+                            if (currentVal.includes(job)) {
+                                input.value = currentVal.replace(job, ''); 
+                            } else {
+                                input.value = currentVal + job; 
+                            }
+                            saveSettingsFromDOM(); 
+                        }
+                    }
+                    return; 
+                }
+
+                if(usedJobs.has(job)) return; 
+                selectedJob = (selectedJob === job) ? null : job; 
+                refreshBoard(); 
+                updateDeckMessage();
+            };
             btn.draggable = true; btn.ondragstart = (e) => { if(usedJobs.has(job)) { e.preventDefault(); return; } e.dataTransfer.setData("text", job); selectedJob = job; refreshBoard(); };
             container.appendChild(btn);
         });
@@ -260,12 +317,12 @@
     function handleSlotClick(r, c) { if (selectedPlayerIndices[r] === -1) return; if (selectedJob) setJob(r, c, selectedJob); else if (boardState[r][c]) setJob(r, c, null); }
     function setJob(r, c, job) {
         const pIdx = selectedPlayerIndices[r]; if (pIdx === -1) return; const player = members[pIdx];
-        if (!job) { boardState[r][c] = null; selectedJob = null; saveBoardState(); refreshBoard(); return; }
+        if (!job) { boardState[r][c] = null; selectedJob = null; saveBoardState(); refreshBoard(); updateDeckMessage(); return; }
         const isMaster = player.masterJobs.includes(job); const isLv99 = player.lv99Jobs.includes(job);
         if (!isMaster && !isLv99) return; 
         const isUsed = boardState.some((row, rr) => row.some((j, cc) => j === job && !(rr === r && cc === c)));
         if (isUsed) { alert(`${job} は既に使用されています`); return; }
-        boardState[r][c] = job; selectedJob = null; saveBoardState(); refreshBoard();
+        boardState[r][c] = job; selectedJob = null; saveBoardState(); refreshBoard(); updateDeckMessage();
     }
     function validateRowJobs(r) {
         const pIdx = selectedPlayerIndices[r]; if(pIdx === -1) { boardState[r] = [null, null, null]; return; }
@@ -274,127 +331,60 @@
     }
     function autoFillBoard() {
         if(!confirm("空いている枠を自動で埋めますか？")) return;
-
-        // 1. 現在、盤面で使用済みのジョブを特定
-        const usedJobs = new Set();
-        boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
-
-        // 2. 空いているスロットを全てリストアップ
-        let emptySlots = [];
-        for(let r=0; r<6; r++) {
-            if(selectedPlayerIndices[r] === -1) continue; // プレイヤー未選択の行は無視
-            for(let c=0; c<3; c++) {
-                if(!boardState[r][c]) emptySlots.push({r, c});
-            }
-        }
-
-        // 3. 全ての空きスロットが埋まるか、候補がなくなるまでループ
-        while(emptySlots.length > 0) {
-            
-            // 各スロットについて、「現時点で選択可能なジョブ」を計算
-            const slotsWithCandidates = emptySlots.map(slot => {
-                const player = members[selectedPlayerIndices[slot.r]];
-                
-                // マスターとLv99の両方から、まだ使われていない(usedJobsにない)ものを抽出
-                const validMaster = player.masterJobs.filter(j => !usedJobs.has(j));
-                const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
-                
-                // 候補の総数（優先度判定用）と、具体的な候補リスト
-                const totalCount = validMaster.length + validLv99.length;
-                
-                return { 
-                    ...slot, 
-                    validMaster, 
-                    validLv99, 
-                    totalCount 
-                };
-            });
-
-            // 候補が少ない順に並べ替え（昇順）
-            // これにより「あと1つしか選べない！」という人が先頭に来ます
-            slotsWithCandidates.sort((a, b) => a.totalCount - b.totalCount);
-
-            // 最も切羽詰まっているスロットを取得
-            const target = slotsWithCandidates[0];
-
-            if (target.totalCount === 0) {
-                // 候補が0個なら、もう埋められないのでリストから外して次へ（手詰まり回避）
-                emptySlots = emptySlots.filter(s => !(s.r === target.r && s.c === target.c));
-                continue;
-            }
-
-            // 候補の中からジョブを決定（マスター優先、その中でランダム）
-            let pick = null;
-            if (target.validMaster.length > 0) {
-                pick = target.validMaster[Math.floor(Math.random() * target.validMaster.length)];
-            } else {
-                pick = target.validLv99[Math.floor(Math.random() * target.validLv99.length)];
-            }
-
-            // 決定したジョブを盤面にセットし、使用済みリストに追加
-            boardState[target.r][target.c] = pick;
-            usedJobs.add(pick);
-
-            // 埋めたスロットをリストから除外
-            emptySlots = emptySlots.filter(s => !(s.r === target.r && s.c === target.c));
-        }
-
-        saveBoardState();
-        refreshBoard();
+        const usedJobs = new Set(); boardState.forEach(row => row.forEach(j => { if(j) usedJobs.add(j); }));
+        const emptySlots = []; for(let r=0; r<6; r++) { if(selectedPlayerIndices[r] === -1) continue; for(let c=0; c<3; c++) { if(!boardState[r][c]) emptySlots.push({r, c}); } }
+        for (let i = emptySlots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [emptySlots[i], emptySlots[j]] = [emptySlots[j], emptySlots[i]]; }
+        emptySlots.forEach(slot => {
+            const player = members[selectedPlayerIndices[slot.r]];
+            const validMaster = player.masterJobs.filter(j => !usedJobs.has(j)); const validLv99 = player.lv99Jobs.filter(j => !usedJobs.has(j));
+            let pick = (validMaster.length > 0) ? validMaster[Math.floor(Math.random() * validMaster.length)] : (validLv99.length > 0 ? validLv99[Math.floor(Math.random() * validLv99.length)] : null);
+            if (pick) { boardState[slot.r][slot.c] = pick; usedJobs.add(pick); }
+        });
+        saveBoardState(); refreshBoard();
     }
 
-    // --- Modern URL Encoding Logic (Standard & URL Safe) ---
-// --- index.html 内 ---
-
+    // --- Binary Packing URL Generation ---
     function generateShareUrl() {
-        const boss1 = document.getElementById('boss-1')?.value;
-        const boss2 = document.getElementById('boss-2')?.value;
-        const boss3 = document.getElementById('boss-3')?.value;
+        const bossMap = BOSS_DATA.reduce((acc, b, idx) => { acc[b.name] = idx; return acc; }, {});
+        const jobMap = JOBS.reduce((acc, j, idx) => { acc[j] = idx; return acc; }, {});
 
-        // バイナリデータを格納する配列
+        const boss1 = bossMap[document.getElementById('boss-1')?.value] || 0;
+        const boss2 = bossMap[document.getElementById('boss-2')?.value] || 0;
+        const boss3 = bossMap[document.getElementById('boss-3')?.value] || 0;
+
+        // バイナリ配列: [Boss1, Boss2, Boss3, Row1..., Row6...]
         const bytes = [];
-
-        // 1. ボス情報の格納 (インデックス化: 1byte x 3)
-        [boss1, boss2, boss3].forEach(b => {
-             const idx = BOSS_DATA.findIndex(d => d.name === b);
-             bytes.push(idx >= 0 ? idx : 0); // 見つからなければ0
-        });
+        bytes.push(boss1, boss2, boss3);
 
         const encoder = new TextEncoder();
 
-        // 2. メンバー情報 (6人分固定)
         for(let r=0; r<6; r++) {
             const pIdx = selectedPlayerIndices[r];
             const player = (pIdx !== -1) ? members[pIdx] : null;
             
-            // A. 名前: 長さ(1byte) + UTF-8バイト列
+            // 名前
             const name = player ? player.name : "";
             const nameBytes = encoder.encode(name);
-            // ※名前が長すぎる(255byte超)場合はカットするなどの処理が必要ですが、通常運用ならこのままでOK
-            bytes.push(nameBytes.length); 
-            nameBytes.forEach(b => bytes.push(b));
+            const nameLen = Math.min(nameBytes.length, 255); // 安全策
+            
+            bytes.push(nameLen);
+            for(let k=0; k<nameLen; k++) bytes.push(nameBytes[k]);
 
-            // B. ジョブ: インデックス化 (1byte x 3)
-            const rowJobs = boardState[r]; // [J1, J2, J3]
+            // ジョブ3つ (255=空)
             for(let c=0; c<3; c++) {
-                const jobName = rowJobs[c];
-                if(jobName) {
-                    const jIdx = JOBS.indexOf(jobName);
-                    // 255(0xFF)を「空」または「不明」として扱います
-                    bytes.push(jIdx >= 0 ? jIdx : 255); 
-                } else {
-                    bytes.push(255); 
+                const jName = boardState[r][c];
+                let jIdx = 255;
+                if(jName && jobMap[jName] !== undefined) {
+                    jIdx = jobMap[jName];
                 }
+                bytes.push(jIdx);
             }
         }
 
-        // Uint8Array化 -> バイナリ文字列 -> Base64 (URL Safe)
-        const uint8Arr = new Uint8Array(bytes);
+        // Uint8Array -> BinaryString -> Base64 URL Safe
+        const uint8 = new Uint8Array(bytes);
         let binary = '';
-        for (let i = 0; i < uint8Arr.length; i++) {
-            binary += String.fromCharCode(uint8Arr[i]);
-        }
-        
+        for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
         const base64 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
         
         const currentPath = window.location.pathname;
@@ -403,6 +393,7 @@
         
         document.getElementById('share-url').value = viewerUrl;
     }
+
     function copyShareUrl() { const copyText = document.getElementById("share-url"); if(!copyText.value) return; copyText.select(); navigator.clipboard.writeText(copyText.value).then(() => { alert("URLをコピーしました！"); }); }
 </script>
 </body>
