@@ -390,7 +390,12 @@
     </div>
 
     <div id="board" class="content active">
-        <button class="btn-action btn-auto" onclick="autoFillBoard()">🎲 残りを適当に埋める</button>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button class="btn-action btn-auto" style="flex:1; margin-bottom:0;" onclick="autoFillBoard()">🎲
+                残りを適当に埋める</button>
+            <button class="btn-action" style="background:var(--danger); width:80px;" onclick="resetBoardJobs()">🗑️
+                リセット</button>
+        </div>
 
         <div class="boss-header">
             <div style="padding-top:5px; font-weight:bold; color:#666;">MEMBER</div>
@@ -701,6 +706,15 @@
                 if (pick) { boardState[slot.r][slot.c] = pick; usedJobs.add(pick); }
             });
             saveBoardState(); refreshBoard();
+        }
+
+        function resetBoardJobs() {
+            if (!confirm("配置されたジョブを全てリセットしますか？\n（メンバーは維持されます）")) return;
+            boardState = Array(6).fill(null).map(() => [null, null, null]);
+            selectedJob = null;
+            saveBoardState();
+            refreshBoard();
+            updateDeckMessage();
         }
 
         // --- URL Generation (Compressed & Safe) ---
